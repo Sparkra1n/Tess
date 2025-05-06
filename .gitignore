@@ -1,0 +1,15 @@
+/node_modules/
+/.vite/
+/dist/
+*.log
+*.d.ts
+.env
+.env.local
+.env.*.local
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+yarn.lock
+package-lock.json
+
