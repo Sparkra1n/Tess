@@ -44,7 +44,6 @@ export class Stage {
     const targetPosition = targetMesh.position;
 
     let direction = new Three.Vector3(0, 0, -1);
-    direction = (this.cameraTarget as any).direction.clone();
     const targetRotationY = targetMesh.rotation.y;
     direction = new Three.Vector3(Math.sin(targetRotationY), 0, -Math.cos(targetRotationY)).normalize();
 
