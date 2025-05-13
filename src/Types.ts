@@ -21,22 +21,20 @@ export type Plane = [Axis, Axis];
 
 export type Grid = number[][];
 
-export class Point2 {
-  public x: number;
-  public y: number;
 
-  constructor(x: number, y: number) {
-    this.x = x;
-    this.y = y;
+export class Point2 {
+  constructor(public x: number, public y: number) { }
+
+  static of(x: number, y: number): Point2 {
+    return new Point2(x, y);
   }
 }
 
 export class WallSegment {
-  public p1: Point2;
-  public p2: Point2;
+  constructor(public p1: Point2, public p2: Point2) { }
 
-  constructor(p1: Point2, p2: Point2) {
-    this.p1 = p1;
-    this.p2 = p2;
+  static fromCoords(x1: number, y1: number, x2: number, y2: number): WallSegment {
+    return new WallSegment(new Point2(x1, y1), new Point2(x2, y2));
   }
 }
+
