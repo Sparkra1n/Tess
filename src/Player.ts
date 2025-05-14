@@ -12,11 +12,13 @@ export class Player implements RenderableObject {
   gravity = -0.01;
   grounded = true;
   mesh = new Three.Group();
-  vertices4D = Player.generateTesseractVertices4D(4);
+  vertices4D = Player.generateTesseractVertices4D(3);
   wireframe: Three.LineSegments;
 
   constructor() {
-    this.wireframe = this.renderTesseract();
+    const initialProjected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
+    const edges = Player.generateTesseractEdges(this.vertices4D);
+    this.wireframe = this.createWireframe(initialProjected, edges);
     this.mesh.add(this.wireframe);
     this.mesh.position.copy(this.position);
   }
@@ -30,6 +32,20 @@ export class Player implements RenderableObject {
           for (let w of [-half, half])
             vertices.push(new Three.Vector4(x, y, z, w));
     return vertices;
+  }
+
+  static generateTesseractEdges(vertices4D: Three.Vector4[]): number[] {
+    const edges: number[] = [];
+    for (let i = 0; i < vertices4D.length; i++) {
+      for (let j = i + 1; j < vertices4D.length; j++) {
+        let diffCount = 0;
+        for (const coord of ['x', 'y', 'z', 'w'] as const) {
+          if (vertices4D[i][coord] !== vertices4D[j][coord]) diffCount++;
+        }
+        if (diffCount === 1) edges.push(i, j);
+      }
+    }
+    return edges;
   }
 
   static rotate4D(v: Three.Vector4, plane: Plane, angle: number) {
@@ -46,40 +62,15 @@ export class Player implements RenderableObject {
     const perspectiveD = 3;
     const w = Math.max(-1, Math.min(1, v4.w + this.w));
     const factor = 1 / (perspectiveD - w) || 1;
-    return new Three.Vector3(v4.x * factor, v4.y * factor, v4.z * factor).add(this.position);
+    return new Three.Vector3(v4.x * factor, v4.y * factor, v4.z * factor);
   }
 
-  createWireframe(vertices3D: Three.Vector3[]): Three.LineSegments {
+  createWireframe(vertices3D: Three.Vector3[], edges: number[]): Three.LineSegments {
     const geometry = new Three.BufferGeometry();
-    const edges = [];
     const positions = vertices3D.map(v => v.toArray()).flat();
     geometry.setAttribute('position', new Three.Float32BufferAttribute(positions, 3));
-
-    // Tesseract edges for size=1 (distance between adjacent vertices = 1)
-    const threshold = 1.01; // Slightly above 1 to account for float precision
-    for (let i = 0; i < vertices3D.length; i++) {
-      for (let j = i + 1; j < vertices3D.length; j++) {
-        const diff = vertices3D[i].clone().sub(vertices3D[j]);
-        if (Math.abs(diff.length() - 1) < threshold) edges.push(i, j);
-      }
-    }
-
     geometry.setIndex(edges);
-    const wireframe = new Three.LineSegments(geometry, new Three.LineBasicMaterial({ color: 0x00ffcc }));
-
-    // Center the wireframe geometry
-    geometry.computeBoundingBox();
-    const center = new Three.Vector3();
-    geometry.boundingBox!.getCenter(center);
-    geometry.translate(-center.x, -center.y, -center.z);
-
-    return wireframe;
-  }
-
-  renderTesseract(): Three.LineSegments {
-    const projected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
-    console.log('Projected vertices:', projected.map(v => v.toArray()));
-    return this.createWireframe(projected);
+    return new Three.LineSegments(geometry, new Three.LineBasicMaterial({ color: 0x00ffcc }));
   }
 
   update(context: GameContext): void {
@@ -118,10 +109,13 @@ export class Player implements RenderableObject {
       this.grounded = true;
     }
 
-    //TODO: Don't do this redraw inefficiency nonsense
-    this.mesh.remove(this.wireframe);
-    this.wireframe = this.renderTesseract();
-    this.mesh.add(this.wireframe);
+    // Update tesseract projection
+    const projected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
+    const positions = projected.map(v => v.toArray()).flat();
+    const geometry = this.wireframe.geometry as Three.BufferGeometry;
+    geometry.setAttribute('position', new Three.Float32BufferAttribute(positions, 3));
+    geometry.attributes.position.needsUpdate = true;
+
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.rotationY;
 
@@ -135,7 +129,7 @@ export class Player implements RenderableObject {
   getMesh(): Three.Object3D {
     return this.mesh;
   }
-  //TODO: Add back w implementation
+
   moveWForward() { this.w += this.speed; }
   moveWBackward() { this.w -= this.speed; }
 }
