@@ -4,11 +4,12 @@
 
 import * as Three from 'three';
 import { RenderableObject, GameContext } from './Types';
-
+import { Maze } from "./Maze.ts";
 export class Stage {
   private scene = new Three.Scene();
   private camera = new Three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
   private renderer = new Three.WebGLRenderer();
+  private maze: Maze = new Maze(50, 50, 5, 20);
   private objects: RenderableObject[] = [];
   private cameraOffset = new Three.Vector3(0, 3, -6);
   private cameraTarget: RenderableObject | null = null;
@@ -19,6 +20,9 @@ export class Stage {
     this.camera.lookAt(0, 0, 0);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
+
+    // Add maze
+    this.addObject(this.maze);
 
     // Add grid helper to the scene
     const gridHelper = new Three.GridHelper(20, 20);
@@ -62,7 +66,11 @@ export class Stage {
   }
 
   update(context: GameContext): void {
-    for (const obj of this.objects) obj.update(context);
+    for (const obj of this.objects) {
+      if (obj === null)
+        continue;
+      obj.update(context);
+    }
     this.updateCamera(context);
     this.renderer.render(this.scene, this.camera);
   }

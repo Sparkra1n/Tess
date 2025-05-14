@@ -25,7 +25,7 @@ export class Supervisor {
     this.run();
   }
 
-  run = () => {
+  run() {
     let lastTime = performance.now();
     const loop = (time: number) => {
       const deltaTime = (time - lastTime) / 1000;
@@ -35,7 +35,7 @@ export class Supervisor {
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
-  };
+  }
 }
 
 
