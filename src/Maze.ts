@@ -14,7 +14,7 @@ export class Maze implements RenderableObject {
   private cellSize: number;
   private wallHeight: number;
   private wallSegments: WallSegment[] = [];
-  private lineSegments: Three.LineSegments;
+  private lineSegments: Three.LineSegments | null = null;
   private grid: Grid;
 
   constructor(width: number, height: number, cellSize: number, wallHeight: number) {
