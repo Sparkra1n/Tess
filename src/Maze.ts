@@ -7,6 +7,7 @@
 import * as Three from 'three';
 import { Direction, dx, dy, opposite } from "./Directions.ts";
 import { GameContext, RenderableObject } from "./Types.ts";
+import { Ramp, vertexShader, fragmentShader } from "./ToonShader.ts"
 
 export type Grid = number[][];
 
@@ -143,8 +144,25 @@ export class Maze implements RenderableObject {
     this.generateMaze();
     this.createWallSegments();
 
+    const ramp = new Ramp(
+      new Three.Color(0x333333), // Shadow
+      new Three.Color(0x6666cc), // Base
+      new Three.Color(0x9999ff), // Intermediate
+      new Three.Color(0xffffff)  // Highlight
+    );
+
+    // Create material
+    const material = new Three.ShaderMaterial({
+      uniforms: {
+        lightDirection: { value: new Three.Vector3(1, 1, 1).normalize() },
+        rampTexture: { value: ramp.getTexture() }
+      },
+      vertexShader,
+      fragmentShader
+    });
+
     const wallThickness = this.cellSize * 0.1; // Thin walls to ensure passages are wide
-    const material = new Three.MeshPhongMaterial({ color: 0x00ffcc });
+    // const material = new Three.MeshPhongMaterial({ color: 0x00ffcc });
     const group = new Three.Group();
 
     for (const segment of this.wallSegments) {
