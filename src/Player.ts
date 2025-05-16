@@ -1,13 +1,19 @@
+/**
+ * @file Player.ts
+ * @brief Contains the the implementation of the maze player.
+ * Date: 2025/05/08
+ */
+
 import * as Three from 'three';
 import { GameContext, RenderableObject, Plane } from './Types';
 
 export class Player implements RenderableObject {
   position = new Three.Vector3(0, 0, 0);
   velocity = new Three.Vector3(0, 0, 0);
-  direction = new Three.Vector3(0, 0, -1);
-  rotationY = 0;
+  direction = new Three.Vector3(0, 0, 1);
+  rotation = new Three.Vector3(0, 0, 0);
   w = 0;
-  speed = 0.1;
+  speed = 0.2;
   jumpSpeed = 0.2;
   gravity = -0.01;
   grounded = true;
@@ -58,6 +64,18 @@ export class Player implements RenderableObject {
     v[b] = sin * tempA + cos * tempB;
   }
 
+  getDirection() {
+    return this.direction;
+  }
+
+  getPosition() {
+    return this.position;
+  }
+
+  getRotation() {
+    return this.rotation;
+  }
+
   projectPerspective4Dto3D(v4: Three.Vector4) {
     const perspectiveD = 3;
     const w = Math.max(-1, Math.min(1, v4.w + this.w));
@@ -77,18 +95,18 @@ export class Player implements RenderableObject {
     for (const key of context.input) {
       switch (key) {
         case 'w':
-          this.position.add(this.direction.clone().multiplyScalar(this.speed));
+          this.position.add(this.direction.clone().multiplyScalar(-this.speed));
           break;
         case 's':
-          this.position.add(this.direction.clone().multiplyScalar(-this.speed));
+          this.position.add(this.direction.clone().multiplyScalar(this.speed));
           break;
         case 'a':
           const left = new Three.Vector3().crossVectors(new Three.Vector3(0, 1, 0), this.direction).normalize();
-          this.position.add(left.multiplyScalar(this.speed));
+          this.position.add(left.multiplyScalar(-this.speed));
           break;
         case 'd':
           const right = new Three.Vector3().crossVectors(this.direction, new Three.Vector3(0, 1, 0)).normalize();
-          this.position.add(right.multiplyScalar(this.speed));
+          this.position.add(right.multiplyScalar(-this.speed));
           break;
         case ' ':
           if (this.grounded) {
@@ -99,7 +117,7 @@ export class Player implements RenderableObject {
       }
     }
 
-    this.direction = new Three.Vector3(Math.sin(this.rotationY), 0, Math.cos(this.rotationY)).normalize();
+    this.direction = new Three.Vector3(Math.sin(this.rotation.y), 0, Math.cos(this.rotation.y)).normalize();
 
     this.velocity.y += this.gravity;
     this.position.add(this.velocity);
@@ -117,7 +135,7 @@ export class Player implements RenderableObject {
     geometry.attributes.position.needsUpdate = true;
 
     this.mesh.position.copy(this.position);
-    this.mesh.rotation.y = this.rotationY;
+    this.mesh.rotation.y = this.rotation.y;
 
     for (const v of this.vertices4D) {
       Player.rotate4D(v, ['x', 'y'], 0.01);
@@ -125,7 +143,6 @@ export class Player implements RenderableObject {
       Player.rotate4D(v, ['x', 'z'], 0.005);
     }
   }
-
   getMesh(): Three.Object3D {
     return this.mesh;
   }

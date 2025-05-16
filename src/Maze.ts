@@ -1,12 +1,30 @@
 /**
  * @file Maze.ts
- * @brief Implementation of the Hunt and Kill maze generation algorithm in Typescript
- * Date : 2025/05/08
+ * @brief Implementation of a recursive backtracking maze generation algorithm in TypeScript with 3D wall extrusion
+ * Date: 2025/05/16
  */
 
 import * as Three from 'three';
-import { Direction, dx, dy, opposite } from "./Directions.ts"
-import { Grid, Point2, WallSegment, GameContext, RenderableObject } from "./Types.ts"
+import { Direction, dx, dy, opposite } from "./Directions.ts";
+import { GameContext, RenderableObject } from "./Types.ts";
+
+export type Grid = number[][];
+
+export class Point2 {
+  constructor(public x: number, public y: number) { }
+
+  static of(x: number, y: number): Point2 {
+    return new Point2(x, y);
+  }
+}
+
+export class WallSegment {
+  constructor(public p1: Point2, public p2: Point2) { }
+
+  static fromCoords(x1: number, y1: number, x2: number, y2: number): WallSegment {
+    return new WallSegment(new Point2(x1, y1), new Point2(x2, y2));
+  }
+}
 
 export class Maze implements RenderableObject {
   private width: number;
@@ -14,7 +32,7 @@ export class Maze implements RenderableObject {
   private cellSize: number;
   private wallHeight: number;
   private wallSegments: WallSegment[] = [];
-  private lineSegments: Three.LineSegments | null = null;
+  private mesh: Three.Object3D | null = null;
   private grid: Grid;
 
   constructor(width: number, height: number, cellSize: number, wallHeight: number) {
@@ -24,103 +42,57 @@ export class Maze implements RenderableObject {
     this.wallHeight = wallHeight;
 
     this.grid = Array.from(Array(height), _ => Array(width).fill(0));
-    this.generateMazeLineSegments();
+    this.generateMazeMesh();
+  }
+
+  getPosition() {
+    return new Three.Vector3(0, 0, 0);
+  }
+
+  getRotation() {
+    return new Three.Vector3(0, 0, 0);
+  }
+
+  getDirection() {
+    return new Three.Vector3(0, 0, 0);
   }
 
   update(context: GameContext): void {
-
+    // No update needed for static maze
   }
 
   getMesh(): Three.Object3D {
-    return this.lineSegments;
+    if (!this.mesh) {
+      throw new Error("Mesh not initialized");
+    }
+    return this.mesh;
   }
 
-  walk(point: Point2): Point2 | null {
-    // Scramble the directions
-    const directions = [
-      Direction.North,
-      Direction.South,
-      Direction.East,
-      Direction.West
-    ].sort(() => Math.random() - 0.5);
+  private carvePassagesFrom(x: number, y: number): void {
+    const directions = [Direction.North, Direction.South, Direction.East, Direction.West]
+      .sort(() => Math.random() - 0.5);
 
-    for (const direction of directions) {
-      // Calculate new node
-      const xp = point.x + dx(direction);
-      const yp = point.y + dy(direction);
-
-      // Make sure it's still in the grid and not traversed
-      if (xp >= 0 && yp >= 0
-        && yp < this.grid.length
-        && xp < this.grid[yp].length
-        && this.grid[yp][xp] === 0
-      ) {
-        this.grid[point.y][point.x] |= direction;
-        this.grid[yp][xp] |= opposite(direction);
-        return new Point2(xp, yp);
+    for (const dir of directions) {
+      const nx = x + dx(dir);
+      const ny = y + dy(dir);
+      if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height && this.grid[ny][nx] === 0) {
+        this.grid[y][x] |= dir;
+        this.grid[ny][nx] |= opposite(dir);
+        this.carvePassagesFrom(nx, ny);
       }
     }
-    return null;
-  }
-
-  hunt(): Point2 | null {
-    for (let y = 0; y < this.grid.length; ++y) {
-      for (let x = 0; x < this.grid[y].length; ++x) {
-        if (this.grid[y][x] !== 0) continue;
-
-        const neighbors: Direction[] = [];
-        if (y + 1 < this.grid.length && this.grid[y + 1][x] !== 0) neighbors.push(Direction.North);
-        if (y > 0 && this.grid[y - 1][x] !== 0) neighbors.push(Direction.South);
-        if (x + 1 < this.grid[y].length && this.grid[y][x + 1] !== 0) neighbors.push(Direction.East);
-        if (x > 0 && this.grid[y][x - 1] !== 0) neighbors.push(Direction.West);
-
-        if (neighbors.length > 0) {
-          const direction = neighbors[Math.floor(Math.random() * neighbors.length)];
-          const xp = x + dx(direction);
-          const yp = y + dy(direction);
-          // Ensure the target cell is within bounds
-          if (yp >= 0 && yp < this.grid.length && xp >= 0 && xp < this.grid[yp].length) {
-            this.grid[y][x] |= direction;
-            this.grid[yp][xp] |= opposite(direction);
-            return new Point2(x, y);
-          } else {
-            console.warn(`Skipped out-of-bounds access: yp=${yp}, xp=${xp}, direction=${direction}`);
-          }
-        }
-      }
-    }
-    return null;
   }
 
   generateMaze(): void {
-    let node = new Point2(
-      Math.floor(Math.random() * this.width),
-      Math.floor(Math.random() * this.height)
-    );
-
-    while (true) {
-      const walkResult = this.walk(node);
-      if (walkResult) {
-        node.x = walkResult.x;
-        node.y = walkResult.y;
-      }
-      else {
-        const huntResult = this.hunt();
-        if (huntResult) {
-          node.x = huntResult.x;
-          node.y = huntResult.y;
-        }
-        else
-          break;
-      }
-    }
+    this.carvePassagesFrom(0, 0);
   }
 
   createWallSegments(): void {
     const w = this.grid[0].length;
     const h = this.grid.length;
+    this.wallSegments = [];
 
-    // Add boundary walls
+    // Add boundary walls at grid edges
     this.wallSegments.push(WallSegment.fromCoords(0, 0, 0, h)); // Left wall
     this.wallSegments.push(WallSegment.fromCoords(w, 0, w, h)); // Right wall
     this.wallSegments.push(WallSegment.fromCoords(0, 0, w, 0)); // Top wall
@@ -130,76 +102,106 @@ export class Maze implements RenderableObject {
     for (let i = 1; i < w; i++) {
       let start: number | null = null;
       for (let j = 0; j <= h; j++) {
-        if (j < h && (this.grid[j][i - 1] & Direction.East) === 0) {
-          if (start === null)
-            start = j;
-        }
-        else if (start !== null) {
+        const leftHasEast = j < h && (this.grid[j][i - 1] & Direction.East) !== 0;
+        const rightHasWest = j < h && (this.grid[j][i] & Direction.West) !== 0;
+        const hasPassage = leftHasEast || rightHasWest;
+
+        if (!hasPassage) {
+          if (start === null) start = j;
+        } else if (start !== null) {
           this.wallSegments.push(WallSegment.fromCoords(i, start, i, j));
           start = null;
         }
       }
+      if (start !== null) {
+        this.wallSegments.push(WallSegment.fromCoords(i, start, i, h));
+      }
     }
 
     // Internal horizontal walls (between rows)
-    for (let k = 1; k < h; k++) {
+    for (let j = 1; j < h; j++) {
       let start: number | null = null;
       for (let i = 0; i <= w; i++) {
-        if (i < w && (this.grid[k - 1][i] & Direction.South) === 0) {
-          if (start === null)
-            start = i;
-        }
-        else if (start !== null) {
-          this.wallSegments.push(WallSegment.fromCoords(start, k, i, k));
+        const aboveHasSouth = i < w && (this.grid[j - 1][i] & Direction.South) !== 0;
+        const belowHasNorth = i < w && (this.grid[j][i] & Direction.North) !== 0;
+        const hasPassage = aboveHasSouth || belowHasNorth;
+
+        if (!hasPassage) {
+          if (start === null) start = i;
+        } else if (start !== null) {
+          this.wallSegments.push(WallSegment.fromCoords(start, j, i, j));
           start = null;
         }
+      }
+      if (start !== null) {
+        this.wallSegments.push(WallSegment.fromCoords(start, j, w, j));
       }
     }
   }
 
-  /**
-   * Generates a Three.js LineSegments object representing the maze walls.
-   * @param width - Number of cells wide
-   * @param height - Number of cells tall
-   * @param cellSize - Width of each maze passage in 3D units
-   * @param wallHeight - Height to extrude walls in 3D units
-   * @returns THREE.LineSegments object for the maze
-   */
-  generateMazeLineSegments(): void {
+  generateMazeMesh(): void {
     this.generateMaze();
     this.createWallSegments();
 
-    const positions: number[] = [];
+    const wallThickness = this.cellSize * 0.1; // Thin walls to ensure passages are wide
+    const material = new Three.MeshPhongMaterial({ color: 0x00ffcc });
+    const group = new Three.Group();
 
     for (const segment of this.wallSegments) {
       const p1 = segment.p1;
       const p2 = segment.p2;
-      const x1 = p1.x * this.cellSize;
-      const y1 = p1.y * this.cellSize;
-      const x2 = p2.x * this.cellSize;
-      const y2 = p2.y * this.cellSize;
 
-      //FIXME: Why is the y-axis the up axis now??
-      //FIXME: I thought 3js uses z-up. I flipped things here but we need to figure this out
+      if (p1.x === p2.x) {
+        // Vertical wall (constant x, runs along z)
+        const x = p1.x * this.cellSize;
+        const z1 = Math.min(p1.y, p2.y) * this.cellSize;
+        const z2 = Math.max(p1.y, p2.y) * this.cellSize;
 
-      // Bottom line (z = 0)
-      positions.push(x1, 0, y1, x2, 0, y2);
+        // Center the wall on the grid line
+        const xMin = x - wallThickness / 2;
+        const xMax = x + wallThickness / 2;
 
-      // Top line (z = wallHeight)
-      positions.push(x1, this.wallHeight, y1, x2, this.wallHeight, y2);
+        const width = xMax - xMin; // Thickness in x
+        const height = this.wallHeight; // Height in y
+        const depth = z2 - z1; // Length in z
 
-      // Vertical line at p1
-      positions.push(x1, 0, y1, x1, this.wallHeight, y1);
+        const geometry = new Three.BoxGeometry(width, height, depth);
+        const position = new Three.Vector3(
+          (xMin + xMax) / 2, // Center in x
+          this.wallHeight / 2, // Center in y
+          (z1 + z2) / 2 // Center in z
+        );
 
-      // Vertical line at p2
-      positions.push(x2, 0, y2, x2, this.wallHeight, y2);
+        const wallMesh = new Three.Mesh(geometry, material);
+        wallMesh.position.set(position.x, position.y, position.z);
+        group.add(wallMesh);
+      } else if (p1.y === p2.y) {
+        // Horizontal wall (constant z, runs along x)
+        const z = p1.y * this.cellSize;
+        const x1 = Math.min(p1.x, p2.x) * this.cellSize;
+        const x2 = Math.max(p1.x, p2.x) * this.cellSize;
+
+        // Center the wall on the grid line
+        const zMin = z - wallThickness / 2;
+        const zMax = z + wallThickness / 2;
+
+        const width = x2 - x1; // Length in x
+        const height = this.wallHeight; // Height in y
+        const depth = zMax - zMin; // Thickness in z
+
+        const geometry = new Three.BoxGeometry(width, height, depth);
+        const position = new Three.Vector3(
+          (x1 + x2) / 2, // Center in x
+          this.wallHeight / 2, // Center in y
+          (zMin + zMax) / 2 // Center in z
+        );
+
+        const wallMesh = new Three.Mesh(geometry, material);
+        wallMesh.position.set(position.x, position.y, position.z);
+        group.add(wallMesh);
+      }
     }
 
-    const geometry = new Three.BufferGeometry();
-    geometry.setAttribute('position', new Three.Float32BufferAttribute(positions, 3));
-
-    const material = new Three.LineBasicMaterial({ color: 0x00ffcc });
-
-    this.lineSegments = new Three.LineSegments(geometry, material);
+    this.mesh = group;
   }
 }
