@@ -47,9 +47,12 @@ export class Ramp {
 export const vertexShader = `
   varying vec3 vNormal;
   varying vec3 vViewPosition;
+  uniform vec3 lightDirection; // world space light direction
+  varying vec3 vlightDir;
 
   void main() {
     vNormal = normalize(normalMatrix * normal);
+    // vLightDir = normalize(viewMatrix * vec4(lightDirection, 0.0)).xyz;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vViewPosition = -mvPosition.xyz;
     gl_Position = projectionMatrix * mvPosition;
@@ -62,13 +65,21 @@ export const fragmentShader = `
 
   varying vec3 vNormal;
   varying vec3 vViewPosition;
+  varying vec3 vLightDir;
 
   void main() {
     vec3 normal = normalize(vNormal);
+    // vec3 lightDir = normalize(vLightDir);
+    // float NdotL = dot(normal, lightDir);
     vec3 lightDir = normalize(lightDirection);
     float NdotL = dot(normal, lightDir);
     float intensity = clamp(NdotL * 0.5 + 0.5, 0.0, 1.0);
-    vec3 color = texture2D(rampTexture, vec2(intensity, 0.5)).rgb;
+    float quantized = floor(intensity * 4.0) / 4.0 + 0.125;
+    // vec3 color = texture2D(rampTexture, vec2(quantized, 0.5)).rgb;
+    // // vec3 color = texture2D(rampTexture, vec2(intensity, 0.5)).rgb;
+    // gl_FragColor = vec4(color, 1.0);
+    
+    vec3 color = texture2D(rampTexture, vec2(0.5, 0.5)).rgb;
     gl_FragColor = vec4(color, 1.0);
   }
 `;
