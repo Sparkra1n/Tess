@@ -30,22 +30,9 @@ export class Stage {
 
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
-    this.camera.rotation.order = 'YXZ'; // Set rotation order for FPS controls
+    this.camera.rotation.order = 'YXZ';
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
-
-    // Mouse movement listener for first-person mode
-    document.addEventListener('mousemove', (event) => {
-      if (this.cameraMode === 'first-person' && document.pointerLockElement === this.renderer.domElement) {
-        const movementX = event.movementX || 0;
-        const movementY = event.movementY || 0;
-        const sensitivity = 0.002;
-        if (this.cameraTarget)
-          this.cameraTarget.getRotation().y -= movementX * sensitivity;
-        this.cameraPitch -= movementY * sensitivity;
-        this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch));
-      }
-    });
   }
 
   addObject(obj: RenderableObject) {
@@ -74,7 +61,14 @@ export class Stage {
 
   updateCamera(context: GameContext): void {
     if (!this.cameraTarget) return;
-    const { deltaTime } = context;
+    const { deltaTime, mouse } = context;
+
+    if (this.cameraMode === 'first-person' && document.pointerLockElement === this.renderer.domElement) {
+      const sensitivity = 0.002;
+      this.cameraTarget.getRotation().y -= mouse.movementX * sensitivity;
+      this.cameraPitch -= mouse.movementY * sensitivity;
+      this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch));
+    }
 
     if (this.cameraMode === 'third-person') {
       const targetPosition = this.cameraTarget.getMesh().position;

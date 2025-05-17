@@ -7,7 +7,7 @@ import * as Three from 'three';
 export interface GameContext {
   deltaTime: number;
   input: Set<string>;
-  mouse: { x: number; y: number };
+  mouse: { x: number; y: number; movementX: number; movementY: number };
 }
 
 export interface RenderableObject {

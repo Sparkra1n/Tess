@@ -1,24 +1,22 @@
-/**
- * @file Supervisor.ts
- */
-
 import { Player } from './Player';
 import { Stage } from './Stage';
-import { GameContext } from './Types';
-import { Maze } from './Maze.ts';
+import { Maze } from './Maze';
 
 export class Supervisor {
   private player = new Player();
   private stage = new Stage();
   private input = new Set<string>();
-  private mouse = { x: 0, y: 0 };
+  private mouse = { x: 0, y: 0, movementX: 0, movementY: 0 };
   private maze: Maze = new Maze(50, 50, 5, 2);
+
   constructor() {
     window.addEventListener('keydown', (e) => this.input.add(e.key));
     window.addEventListener('keyup', (e) => this.input.delete(e.key));
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
+      this.mouse.movementX = e.movementX || 0;
+      this.mouse.movementY = e.movementY || 0;
     });
 
     this.stage.addObject(this.player);
@@ -37,10 +35,11 @@ export class Supervisor {
         input: this.input,
         mouse: this.mouse
       });
+      // Reset mouse movement after each frame to prevent continuous motion
+      this.mouse.movementX = 0;
+      this.mouse.movementY = 0;
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
   }
 }
-
-
