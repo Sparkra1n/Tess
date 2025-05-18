@@ -10,13 +10,19 @@ export class Supervisor {
   private maze: Maze = new Maze(50, 50, 5, 2);
 
   constructor() {
-    window.addEventListener('keydown', (e) => this.input.add(e.key));
-    window.addEventListener('keyup', (e) => this.input.delete(e.key));
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.mouse.movementX = e.movementX || 0;
       this.mouse.movementY = e.movementY || 0;
+    });
+    
+    window.addEventListener('keydown', (e) => {
+      this.input.add(e.key)
+    });
+
+    window.addEventListener('keyup', (e) => {
+      this.input.delete(e.key)
     });
 
     this.stage.addObject(this.player);
@@ -33,9 +39,8 @@ export class Supervisor {
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
-        mouse: this.mouse
+        mouse: { ...this.mouse }
       });
-      // Reset mouse movement after each frame to prevent continuous motion
       this.mouse.movementX = 0;
       this.mouse.movementY = 0;
       requestAnimationFrame(loop);

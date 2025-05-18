@@ -43,43 +43,99 @@ export class Ramp {
   }
 }
 
-// Vertex and fragment shaders (imported or defined as strings)
+// Vertex Shader
 export const vertexShader = `
-  varying vec3 vNormal;
-  varying vec3 vViewPosition;
-  uniform vec3 lightDirection; // world space light direction
-  varying vec3 vlightDir;
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
 
-  void main() {
-    vNormal = normalize(normalMatrix * normal);
-    // vLightDir = normalize(viewMatrix * vec4(lightDirection, 0.0)).xyz;
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vViewPosition = -mvPosition.xyz;
-    gl_Position = projectionMatrix * mvPosition;
-  }
+void main() {
+  vUv = uv;
+  vNormal = normalize(normalMatrix * normal);
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  vViewPosition = mvPosition.xyz;
+  gl_Position = projectionMatrix * mvPosition;
+}
+
 `;
 
-export const fragmentShader = `
-  uniform vec3 lightDirection;
-  uniform sampler2D rampTexture;
+// Fragment Shader
+const fragmentShader = `
+uniform sampler2D rampTexture;
+uniform sampler2D grungeTexture;
+uniform vec3 grungeColor;
+uniform float grungeStrength;
+uniform vec2 grungeScale;
+uniform int numDirectionalLights;
+uniform vec3 directionalLightDirections[4];
+uniform int numPointLights;
+uniform vec3 pointLightPositions[4];
 
-  varying vec3 vNormal;
-  varying vec3 vViewPosition;
-  varying vec3 vLightDir;
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
 
-  void main() {
-    vec3 normal = normalize(vNormal);
-    // vec3 lightDir = normalize(vLightDir);
-    // float NdotL = dot(normal, lightDir);
-    vec3 lightDir = normalize(lightDirection);
+void main() {
+  vec3 normal = normalize(vNormal);
+  float totalIntensity = 0.0;
+
+  for (int i = 0; i < numDirectionalLights; i++) {
+    vec3 lightDir = normalize(directionalLightDirections[i]);
     float NdotL = dot(normal, lightDir);
-    float intensity = clamp(NdotL * 0.5 + 0.5, 0.0, 1.0);
-    float quantized = floor(intensity * 4.0) / 4.0 + 0.125;
-    // vec3 color = texture2D(rampTexture, vec2(quantized, 0.5)).rgb;
-    // // vec3 color = texture2D(rampTexture, vec2(intensity, 0.5)).rgb;
-    // gl_FragColor = vec4(color, 1.0);
-    
-    vec3 color = texture2D(rampTexture, vec2(0.5, 0.5)).rgb;
-    gl_FragColor = vec4(color, 1.0);
+    totalIntensity += max(NdotL, 0.0);
   }
+  for (int i = 0; i < numPointLights; i++) {
+    vec3 lightDir = normalize(pointLightPositions[i] - vViewPosition);
+    float NdotL = dot(normal, lightDir);
+    totalIntensity += max(NdotL, 0.0);
+  }
+  totalIntensity = min(totalIntensity, 1.0);
+
+  vec3 baseColor = texture2D(rampTexture, vec2(totalIntensity, 0.5)).rgb;
+  float weight = grungeStrength * (1.0 - totalIntensity);
+  vec2 scaledUv = vUv * grungeScale;
+  float grungeValue = texture2D(grungeTexture, scaledUv).r;
+  vec3 finalColor = mix(baseColor, grungeColor, weight * grungeValue);
+
+  gl_FragColor = vec4(finalColor, 1.0);
+}
 `;
+
+export function createToonShader(ramp: Ramp): Three.ShaderMaterial {
+  // Load grunge texture (e.g., paper or scratch PNG)
+  const grungeTexture = new Three.TextureLoader().load(
+    'lines.png',
+    () => console.log('Grunge texture loaded'),
+    undefined,
+    (err) => console.error('Error loading grunge texture:', err)
+  );
+  grungeTexture.wrapS = Three.RepeatWrapping;
+  grungeTexture.wrapT = Three.RepeatWrapping;
+  
+  // Assuming ramp is an object providing the ramp texture
+  return new Three.ShaderMaterial({
+    uniforms: {
+      rampTexture: { value: ramp.getTexture() },
+      grungeTexture: { value: grungeTexture },
+      grungeColor: { value: new Three.Color(0x0A1005) },  // Dark gray
+      grungeStrength: { value: 1.0 },  // Adjust grunge intensity
+      grungeScale: { value: new Three.Vector2(1.0, 1.0) },  // Adjust texture tiling
+      numDirectionalLights: { value: 0 },
+      directionalLightDirections: { value: [
+        new Three.Vector3(),
+        new Three.Vector3(),
+        new Three.Vector3(),
+        new Three.Vector3()
+      ] },
+      numPointLights: { value: 0 },
+      pointLightPositions: { value: [
+        new Three.Vector3(),
+        new Three.Vector3(),
+        new Three.Vector3(),
+        new Three.Vector3()
+      ] }
+    },
+    vertexShader,
+    fragmentShader
+  });
+}

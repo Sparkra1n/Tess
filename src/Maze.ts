@@ -1,13 +1,14 @@
 /**
  * @file Maze.ts
  * @brief Implementation of a recursive backtracking maze generation algorithm in TypeScript with 3D wall extrusion
+ * Based on the original concept: https://github.com/Cukowski/Breadth-First-Search-maze-solver-Recursive-Backtracking-maze-generator/tree/main
  * Date: 2025/05/16
  */
 
 import * as Three from 'three';
 import { Direction, dx, dy, opposite } from "./Directions.ts";
 import { GameContext, RenderableObject } from "./Types.ts";
-import { Ramp, vertexShader, fragmentShader } from "./ToonShader.ts"
+import { Ramp, createToonShader } from "./ToonShader.ts"
 
 export type Grid = number[][];
 
@@ -143,83 +144,151 @@ export class Maze implements RenderableObject {
   generateMazeMesh(): void {
     this.generateMaze();
     this.createWallSegments();
-
     const ramp = new Ramp(
-      new Three.Color(0x333333), // Shadow
-      new Three.Color(0x6666cc), // Base
-      new Three.Color(0x9999ff), // Intermediate
-      new Three.Color(0xffffff)  // Highlight
+      new Three.Color(0x273214), // Shadow
+      new Three.Color(0x586C15), // Base
+      new Three.Color(0x7E9223), // Intermediate
+      new Three.Color(0xADC040),  // Highlight
     );
-
-    // Create material
-    const material = new Three.ShaderMaterial({
-      uniforms: {
-        lightDirection: { value: new Three.Vector3(1, 1, 1).normalize() },
-        rampTexture: { value: ramp.getTexture() }
-      },
-      vertexShader,
-      fragmentShader
-    });
-
-    const wallThickness = this.cellSize * 0.1; // Thin walls to ensure passages are wide
-    // const material = new Three.MeshPhongMaterial({ color: 0x00ffcc });
+  
+    const material = createToonShader(ramp);
+    const wallThickness = this.cellSize * 0.1;
     const group = new Three.Group();
-
+  
+    // Define UV scale (e.g., 1 texture repeat per cellSize units)
+    const uvScale = 1.0 / this.cellSize; // Adjust as needed for texture density
+  
     for (const segment of this.wallSegments) {
       const p1 = segment.p1;
       const p2 = segment.p2;
-
+  
+      let geometry: Three.BoxGeometry;
+      let position: Three.Vector3;
+  
       if (p1.x === p2.x) {
         // Vertical wall (constant x, runs along z)
         const x = p1.x * this.cellSize;
         const z1 = Math.min(p1.y, p2.y) * this.cellSize;
         const z2 = Math.max(p1.y, p2.y) * this.cellSize;
-
-        // Center the wall on the grid line
+  
         const xMin = x - wallThickness / 2;
         const xMax = x + wallThickness / 2;
-
+  
         const width = xMax - xMin; // Thickness in x
         const height = this.wallHeight; // Height in y
         const depth = z2 - z1; // Length in z
-
-        const geometry = new Three.BoxGeometry(width, height, depth);
-        const position = new Three.Vector3(
-          (xMin + xMax) / 2, // Center in x
-          this.wallHeight / 2, // Center in y
-          (z1 + z2) / 2 // Center in z
+  
+        geometry = new Three.BoxGeometry(width, height, depth);
+        position = new Three.Vector3(
+          (xMin + xMax) / 2,
+          this.wallHeight / 2,
+          (z1 + z2) / 2
         );
-
-        const wallMesh = new Three.Mesh(geometry, material);
-        wallMesh.position.set(position.x, position.y, position.z);
-        group.add(wallMesh);
+  
+        // Adjust UVs
+        this.adjustBoxUVs(geometry, width, height, depth, uvScale);
+  
       } else if (p1.y === p2.y) {
         // Horizontal wall (constant z, runs along x)
         const z = p1.y * this.cellSize;
         const x1 = Math.min(p1.x, p2.x) * this.cellSize;
         const x2 = Math.max(p1.x, p2.x) * this.cellSize;
-
-        // Center the wall on the grid line
+  
         const zMin = z - wallThickness / 2;
         const zMax = z + wallThickness / 2;
-
+  
         const width = x2 - x1; // Length in x
         const height = this.wallHeight; // Height in y
         const depth = zMax - zMin; // Thickness in z
-
-        const geometry = new Three.BoxGeometry(width, height, depth);
-        const position = new Three.Vector3(
-          (x1 + x2) / 2, // Center in x
-          this.wallHeight / 2, // Center in y
-          (zMin + zMax) / 2 // Center in z
+  
+        geometry = new Three.BoxGeometry(width, height, depth);
+        position = new Three.Vector3(
+          (x1 + x2) / 2,
+          this.wallHeight / 2,
+          (zMin + zMax) / 2
         );
-
-        const wallMesh = new Three.Mesh(geometry, material);
-        wallMesh.position.set(position.x, position.y, position.z);
-        group.add(wallMesh);
+  
+        // Adjust UVs
+        this.adjustBoxUVs(geometry, width, height, depth, uvScale);
       }
+  
+      geometry.computeVertexNormals();
+      const wallMesh = new Three.Mesh(geometry, material);
+      wallMesh.position.set(position.x, position.y, position.z);
+      group.add(wallMesh);
     }
-
+  
     this.mesh = group;
+  }
+  
+  /** Adjusts UVs for BoxGeometry to prevent texture stretching */
+  adjustBoxUVs(
+    geometry: Three.BoxGeometry,
+    width: number,
+    height: number,
+    depth: number,
+    uvScale: number
+  ): void {
+    const uvAttribute = geometry.attributes.uv;
+  
+    // BoxGeometry faces: +x, -x, +y, -y, +z, -z
+    // Each face has 4 vertices (2 triangles)
+    const uvsPerFace = [
+      // +x (right)
+      [
+        new Three.Vector2(0, 0),
+        new Three.Vector2(depth * uvScale, 0),
+        new Three.Vector2(0, height * uvScale),
+        new Three.Vector2(depth * uvScale, height * uvScale)
+      ],
+      // -x (left)
+      [
+        new Three.Vector2(0, 0),
+        new Three.Vector2(depth * uvScale, 0),
+        new Three.Vector2(0, height * uvScale),
+        new Three.Vector2(depth * uvScale, height * uvScale)
+      ],
+      // +y (top)
+      [
+        new Three.Vector2(0, 0),
+        new Three.Vector2(width * uvScale, 0),
+        new Three.Vector2(0, depth * uvScale),
+        new Three.Vector2(width * uvScale, depth * uvScale)
+      ],
+      // -y (bottom)
+      [
+        new Three.Vector2(0, 0),
+        new Three.Vector2(width * uvScale, 0),
+        new Three.Vector2(0, depth * uvScale),
+        new Three.Vector2(width * uvScale, depth * uvScale)
+      ],
+      // +z (front)
+      [
+        new Three.Vector2(0, 0),
+        new Three.Vector2(width * uvScale, 0),
+        new Three.Vector2(0, height * uvScale),
+        new Three.Vector2(width * uvScale, height * uvScale)
+      ],
+      // -z (back)
+      [
+        new Three.Vector2(0, 0),
+        new Three.Vector2(width * uvScale, 0),
+        new Three.Vector2(0, height * uvScale),
+        new Three.Vector2(width * uvScale, height * uvScale)
+      ]
+    ];
+  
+    // Update UVs
+    for (let face = 0; face < 6; face++) {
+      const faceUvs = uvsPerFace[face];
+      // Each face has 4 vertices (quad, split into 2 triangles)
+      const vertexIndices = [face * 4, face * 4 + 1, face * 4 + 2, face * 4 + 3];
+  
+      vertexIndices.forEach((index, i) => {
+        uvAttribute.setXY(index, faceUvs[i].x, faceUvs[i].y);
+      });
+    }
+  
+    uvAttribute.needsUpdate = true;
   }
 }
