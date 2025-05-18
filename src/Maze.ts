@@ -130,7 +130,16 @@ export class Maze extends StaticMesh {
     this.generateMaze();
     this.createWallSegments();
 
-    const material = new Three.MeshStandardMaterial({color: 0x888888});
+        const ramp = new Ramp(
+          new Three.Color(0x273214), // Shadow becomes #050801
+          new Three.Color(0x586C15), // Base becomes #182601
+          new Three.Color(0x7E9223), // Intermediate becomes #354904
+          new Three.Color(0xADC040), // Highlight becomes #6A860D
+          [null, null, null, null], // Disable grunge for testing
+          [new Three.Color(0x050801), null, null, null]
+        );
+
+    const material = createToonShader(ramp);
     const wallThickness = this.cellSize * 0.1;
     const group = this.getMesh() as Three.Group;
     const uvScale = 1.0 / this.cellSize;

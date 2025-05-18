@@ -15,24 +15,28 @@ export class Stage {
   private lastCState: boolean = false;
 
   constructor() {
-    const pointLight = new Three.PointLight(0xffffff, 100, 100);
-    pointLight.position.set(5, 5, 5);
+    const pointLight = new Three.PointLight(0xffffff, 1.0, 100);
+    pointLight.position.set(10, 10, 10);
+    this.scene.add(pointLight);
 
-    const directionalLight = new Three.DirectionalLight(0xdedede, 1);
-    directionalLight.position.set(0.0, 1.0, 0.0).normalize();
+    // const directionalLight = new Three.DirectionalLight(0xdedede, 1);
+    // directionalLight.position.set(0.0, 1.0, 0.0).normalize();
 
 
-    const directionalLight2 = new Three.DirectionalLight(0x00ff00, 1);
-    directionalLight2.position.set(0.0, 1.0, 0.0).normalize();
-    const ambientLight = new Three.AmbientLight(0xdedede, 0.8);
+    // const directionalLight2 = new Three.DirectionalLight(0x00ff00, 1);
+    // directionalLight2.position.set(0.0, 1.0, 0.0).normalize();
+    // const ambientLight = new Three.AmbientLight(0xdedede, 0.8);
 
-    this.scene.add(pointLight, ambientLight);
+    this.scene.add(pointLight);
 
     this.addSpaceSkydome();
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
     this.camera.rotation.order = 'YXZ';
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // this.renderer.outputEncoding = Three.LinearEncoding; // Prevent sRGB conversion
+    this.renderer.toneMapping = Three.NoToneMapping; // Disable tone mapping
+    this.renderer.outputColorSpace = Three.LinearSRGBColorSpace;
     document.body.appendChild(this.renderer.domElement);
 
     // Ensure pointer lock is maintained
@@ -49,44 +53,26 @@ export class Stage {
   }
 
   private updateUniforms(): void {
-    // Get the camera's view matrix
     const viewMatrix = this.camera.matrixWorldInverse;
-    const rotationMatrix = new Three.Matrix3().setFromMatrix4(viewMatrix);
-  
-    // Collect lights from the scene
-    const directionalLights = this.scene.children.filter(
-      child => child instanceof Three.DirectionalLight
-    ) as Three.DirectionalLight[];
     const pointLights = this.scene.children.filter(
       child => child instanceof Three.PointLight
     ) as Three.PointLight[];
-  
-    // Limit to 4 lights per type (matches shader arrays)
     const maxLights = 4;
-    const numDirLights = Math.min(directionalLights.length, maxLights);
     const numPointLights = Math.min(pointLights.length, maxLights);
   
-    // Transform directional light directions to view space
-    const dirLightDirsView = directionalLights.slice(0, maxLights).map(light => {
-      const dirWorld = new Three.Vector3();
-      light.getWorldDirection(dirWorld);  // Direction in world space
-      return dirWorld.applyMatrix3(rotationMatrix).normalize();
-    });
-  
-    // Transform point light positions to view space
     const pointLightPosView = pointLights.slice(0, maxLights).map(light => {
       return light.position.clone().applyMatrix4(viewMatrix);
     });
+    while (pointLightPosView.length < maxLights) {
+      pointLightPosView.push(new Three.Vector3(0, 0, 0));
+    }
   
-    // Update uniforms for all objects
     this.objects.forEach(obj => {
       const object3D = obj.getMesh();
       const updateMaterial = (material: Three.ShaderMaterial) => {
         if (material.uniforms.numDirectionalLights) {
-          material.uniforms.numDirectionalLights.value = numDirLights;
-          dirLightDirsView.forEach((dir, i) => {
-            material.uniforms.directionalLightDirections.value[i].copy(dir);
-          });
+          material.uniforms.numDirectionalLights.value = 0;
+          material.uniforms.directionalLightDirections.value.forEach((dir: Three.Vector3) => dir.set(0, 0, 0));
           material.uniforms.numPointLights.value = numPointLights;
           pointLightPosView.forEach((pos, i) => {
             material.uniforms.pointLightPositions.value[i].copy(pos);
@@ -98,7 +84,6 @@ export class Stage {
         updateMaterial(object3D.material);
       }
   
-      // Handle any meshes that have children (from the planet's moon logic)
       object3D.traverse(child => {
         if (child instanceof Three.Mesh && child.material instanceof Three.ShaderMaterial) {
           updateMaterial(child.material);
