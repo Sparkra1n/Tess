@@ -1,14 +1,8 @@
-/**
- * @file Maze.ts
- * @brief Implementation of a recursive backtracking maze generation algorithm in TypeScript with 3D wall extrusion
- * Based on the original concept: https://github.com/Cukowski/Breadth-First-Search-maze-solver-Recursive-Backtracking-maze-generator/tree/main
- * Date: 2025/05/16
- */
-
 import * as Three from 'three';
 import { Direction, dx, dy, opposite } from "./Directions.ts";
-import { GameContext, RenderableObject } from "./Types.ts";
+import { StaticMesh } from "./Types.ts";
 import { Ramp, createToonShader } from "./ToonShader.ts"
+import { GameContext } from "./GameContext.ts"
 
 export type Grid = number[][];
 
@@ -28,46 +22,40 @@ export class WallSegment {
   }
 }
 
-export class Maze implements RenderableObject {
+export class Maze extends StaticMesh {
   private width: number;
   private height: number;
   private cellSize: number;
   private wallHeight: number;
   private wallSegments: WallSegment[] = [];
-  private mesh: Three.Object3D | null = null;
   private grid: Grid;
 
   constructor(width: number, height: number, cellSize: number, wallHeight: number) {
+    const group = new Three.Group();
+    super(group);
     this.width = width;
     this.height = height;
     this.cellSize = cellSize;
     this.wallHeight = wallHeight;
-
     this.grid = Array.from(Array(height), _ => Array(width).fill(0));
     this.generateMazeMesh();
-  }
 
-  getPosition() {
-    return new Three.Vector3(0, 0, 0);
-  }
-
-  getRotation() {
-    return new Three.Vector3(0, 0, 0);
-  }
-
-  getDirection() {
-    return new Three.Vector3(0, 0, 0);
-  }
-
-  update(context: GameContext): void {
-    // No update needed for static maze
-  }
-
-  getMesh(): Three.Object3D {
-    if (!this.mesh) {
-      throw new Error("Mesh not initialized");
-    }
-    return this.mesh;
+    const floorGeometry = new Three.BoxGeometry(
+      this.width * this.cellSize,
+      1, // height (thickness of the floor)
+      this.height * this.cellSize
+    );
+    const floorMaterial = new Three.MeshStandardMaterial({ color: 0x888888 }); // or your toon shader material
+    const floorMesh = new Three.Mesh(floorGeometry, floorMaterial);
+    
+    // Position it at y = 0 (or slightly under your walls)
+    floorMesh.position.set(
+      (this.width * this.cellSize) / 2,
+      -0.5, // Adjust as needed
+      (this.height * this.cellSize) / 2
+    );
+    
+    this.mesh.add(floorMesh);
   }
 
   private carvePassagesFrom(x: number, y: number): void {
@@ -94,13 +82,11 @@ export class Maze implements RenderableObject {
     const h = this.grid.length;
     this.wallSegments = [];
 
-    // Add boundary walls at grid edges
-    this.wallSegments.push(WallSegment.fromCoords(0, 0, 0, h)); // Left wall
-    this.wallSegments.push(WallSegment.fromCoords(w, 0, w, h)); // Right wall
-    this.wallSegments.push(WallSegment.fromCoords(0, 0, w, 0)); // Top wall
-    this.wallSegments.push(WallSegment.fromCoords(0, h, w, h)); // Bottom wall
+    this.wallSegments.push(WallSegment.fromCoords(0, 0, 0, h));
+    this.wallSegments.push(WallSegment.fromCoords(w, 0, w, h));
+    this.wallSegments.push(WallSegment.fromCoords(0, 0, w, 0));
+    this.wallSegments.push(WallSegment.fromCoords(0, h, w, h));
 
-    // Internal vertical walls (between columns)
     for (let i = 1; i < w; i++) {
       let start: number | null = null;
       for (let j = 0; j <= h; j++) {
@@ -120,7 +106,6 @@ export class Maze implements RenderableObject {
       }
     }
 
-    // Internal horizontal walls (between rows)
     for (let j = 1; j < h; j++) {
       let start: number | null = null;
       for (let i = 0; i <= w; i++) {
@@ -144,19 +129,11 @@ export class Maze implements RenderableObject {
   generateMazeMesh(): void {
     this.generateMaze();
     this.createWallSegments();
-    const ramp = new Ramp(
-      new Three.Color(0x273214), // Shadow
-      new Three.Color(0x586C15), // Base
-      new Three.Color(0x7E9223), // Intermediate
-      new Three.Color(0xADC040),  // Highlight
-    );
-  
-    const material = createToonShader(ramp);
+
+    const material = new Three.MeshStandardMaterial({color: 0x888888});
     const wallThickness = this.cellSize * 0.1;
-    const group = new Three.Group();
-  
-    // Define UV scale (e.g., 1 texture repeat per cellSize units)
-    const uvScale = 1.0 / this.cellSize; // Adjust as needed for texture density
+    const group = this.getMesh() as Three.Group;
+    const uvScale = 1.0 / this.cellSize;
   
     for (const segment of this.wallSegments) {
       const p1 = segment.p1;
@@ -166,49 +143,50 @@ export class Maze implements RenderableObject {
       let position: Three.Vector3;
   
       if (p1.x === p2.x) {
-        // Vertical wall (constant x, runs along z)
+        // Vertical wall (constant x, spans z)
         const x = p1.x * this.cellSize;
         const z1 = Math.min(p1.y, p2.y) * this.cellSize;
         const z2 = Math.max(p1.y, p2.y) * this.cellSize;
   
         const xMin = x - wallThickness / 2;
         const xMax = x + wallThickness / 2;
+        // Extend z extents by wallThickness/2 on each end
+        const zMin = z1 - wallThickness / 2;
+        const zMax = z2 + wallThickness / 2;
   
         const width = xMax - xMin; // Thickness in x
-        const height = this.wallHeight; // Height in y
-        const depth = z2 - z1; // Length in z
+        const height = this.wallHeight;
+        const depth = zMax - zMin; // Extended length in z
   
         geometry = new Three.BoxGeometry(width, height, depth);
         position = new Three.Vector3(
-          (xMin + xMax) / 2,
-          this.wallHeight / 2,
-          (z1 + z2) / 2
+          (xMin + xMax) / 2,      // Center in x
+          this.wallHeight / 2,    // Center in y
+          (zMin + zMax) / 2       // Center in z
         );
-  
-        // Adjust UVs
         this.adjustBoxUVs(geometry, width, height, depth, uvScale);
-  
-      } else if (p1.y === p2.y) {
-        // Horizontal wall (constant z, runs along x)
+      } else {
+        // Horizontal wall (constant z, spans x)
         const z = p1.y * this.cellSize;
         const x1 = Math.min(p1.x, p2.x) * this.cellSize;
         const x2 = Math.max(p1.x, p2.x) * this.cellSize;
   
         const zMin = z - wallThickness / 2;
         const zMax = z + wallThickness / 2;
+        // Extend x extents by wallThickness/2 on each end
+        const xMin = x1 - wallThickness / 2;
+        const xMax = x2 + wallThickness / 2;
   
-        const width = x2 - x1; // Length in x
-        const height = this.wallHeight; // Height in y
+        const width = xMax - xMin; // Extended length in x
+        const height = this.wallHeight;
         const depth = zMax - zMin; // Thickness in z
   
         geometry = new Three.BoxGeometry(width, height, depth);
         position = new Three.Vector3(
-          (x1 + x2) / 2,
-          this.wallHeight / 2,
-          (zMin + zMax) / 2
+          (xMin + xMax) / 2,      // Center in x
+          this.wallHeight / 2,    // Center in y
+          (zMin + zMax) / 2       // Center in z
         );
-  
-        // Adjust UVs
         this.adjustBoxUVs(geometry, width, height, depth, uvScale);
       }
   
@@ -217,11 +195,8 @@ export class Maze implements RenderableObject {
       wallMesh.position.set(position.x, position.y, position.z);
       group.add(wallMesh);
     }
-  
-    this.mesh = group;
   }
-  
-  /** Adjusts UVs for BoxGeometry to prevent texture stretching */
+
   adjustBoxUVs(
     geometry: Three.BoxGeometry,
     width: number,
@@ -230,46 +205,37 @@ export class Maze implements RenderableObject {
     uvScale: number
   ): void {
     const uvAttribute = geometry.attributes.uv;
-  
-    // BoxGeometry faces: +x, -x, +y, -y, +z, -z
-    // Each face has 4 vertices (2 triangles)
     const uvsPerFace = [
-      // +x (right)
       [
         new Three.Vector2(0, 0),
         new Three.Vector2(depth * uvScale, 0),
         new Three.Vector2(0, height * uvScale),
         new Three.Vector2(depth * uvScale, height * uvScale)
       ],
-      // -x (left)
       [
         new Three.Vector2(0, 0),
         new Three.Vector2(depth * uvScale, 0),
         new Three.Vector2(0, height * uvScale),
         new Three.Vector2(depth * uvScale, height * uvScale)
       ],
-      // +y (top)
       [
         new Three.Vector2(0, 0),
         new Three.Vector2(width * uvScale, 0),
         new Three.Vector2(0, depth * uvScale),
         new Three.Vector2(width * uvScale, depth * uvScale)
       ],
-      // -y (bottom)
       [
         new Three.Vector2(0, 0),
         new Three.Vector2(width * uvScale, 0),
         new Three.Vector2(0, depth * uvScale),
         new Three.Vector2(width * uvScale, depth * uvScale)
       ],
-      // +z (front)
       [
         new Three.Vector2(0, 0),
         new Three.Vector2(width * uvScale, 0),
         new Three.Vector2(0, height * uvScale),
         new Three.Vector2(width * uvScale, height * uvScale)
       ],
-      // -z (back)
       [
         new Three.Vector2(0, 0),
         new Three.Vector2(width * uvScale, 0),
@@ -277,18 +243,14 @@ export class Maze implements RenderableObject {
         new Three.Vector2(width * uvScale, height * uvScale)
       ]
     ];
-  
-    // Update UVs
+
     for (let face = 0; face < 6; face++) {
       const faceUvs = uvsPerFace[face];
-      // Each face has 4 vertices (quad, split into 2 triangles)
       const vertexIndices = [face * 4, face * 4 + 1, face * 4 + 2, face * 4 + 3];
-  
       vertexIndices.forEach((index, i) => {
         uvAttribute.setXY(index, faceUvs[i].x, faceUvs[i].y);
       });
     }
-  
     uvAttribute.needsUpdate = true;
   }
 }

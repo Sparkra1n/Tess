@@ -3,12 +3,7 @@
  */
 
 import * as Three from 'three';
-
-export interface GameContext {
-  deltaTime: number;
-  input: Set<string>;
-  mouse: { x: number; y: number; movementX: number; movementY: number };
-}
+import { GameContext } from "./GameContext.ts"
 
 export interface RenderableObject {
   update(context: GameContext): void;
@@ -16,28 +11,39 @@ export interface RenderableObject {
   getDirection(): Three.Vector3;
   getPosition(): Three.Vector3;
   getRotation(): Three.Vector3;
+  setPosition(x: number, y: number, z: number): void;
 }
 
-export class StaticMesh implements RenderableObject{
-  private mesh: Three.Object3D;
+export class StaticMesh implements RenderableObject {
+  protected mesh: Three.Object3D;
 
   constructor(mesh: Three.Object3D) {
     this.mesh = mesh;
   }
-  getPosition() {
+
+  static fromGeometry(geometry: Three.BufferGeometry, material: Three.Material): StaticMesh {
+    const mesh = new Three.Mesh(geometry, material);
+    return new StaticMesh(mesh);
+  }
+
+  setPosition(x: number, y: number, z: number) : void {
+    this.mesh.position.set(x, y, z);
+  }
+
+  getPosition(): Three.Vector3 {
     return this.mesh.position;
   }
 
-  getRotation() {
+  getRotation(): Three.Vector3 {
     return new Three.Vector3(0, 0, 0);
   }
 
-  getDirection() {
-    return new Three.Vector3(0, 0, 0);
+  getDirection(): Three.Vector3 {
+    return new Three.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
   }
 
   update(context: GameContext): void {
-    // No update needed for static maze
+    // No update needed for static objects
   }
 
   getMesh(): Three.Object3D {
@@ -47,6 +53,3 @@ export class StaticMesh implements RenderableObject{
     return this.mesh;
   }
 }
-
-export type Axis = 'x' | 'y' | 'z' | 'w';
-export type Plane = [Axis, Axis];

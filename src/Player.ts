@@ -5,7 +5,11 @@
  */
 
 import * as Three from 'three';
-import { GameContext, RenderableObject, Plane } from './Types';
+import { RenderableObject } from './Types';
+import { GameContext } from "./GameContext.ts"
+
+type Axis = 'x' | 'y' | 'z' | 'w';
+type Plane = [Axis, Axis];
 
 export class Player implements RenderableObject {
   position = new Three.Vector3(0, 0, 0);
@@ -66,6 +70,10 @@ export class Player implements RenderableObject {
 
   getDirection() {
     return this.direction;
+  }
+
+  setPosition(x: number, y: number, z: number) : void {
+    this.mesh.position.set(x, y, z);
   }
 
   getPosition() {

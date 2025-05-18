@@ -1,9 +1,10 @@
 import * as Three from 'three';
-import { RenderableObject, GameContext } from './Types';
+import { RenderableObject } from './Types';
+import { GameContext } from "./GameContext.ts"
 
 export class Stage {
   private scene = new Three.Scene();
-  private camera = new Three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+  private camera = new Three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
   private renderer = new Three.WebGLRenderer();
   private objects: RenderableObject[] = [];
   private cameraOffset = new Three.Vector3(0, 3, -6);
@@ -18,15 +19,16 @@ export class Stage {
     pointLight.position.set(5, 5, 5);
 
     const directionalLight = new Three.DirectionalLight(0xdedede, 1);
-    directionalLight.position.set(1.0, 1.0, 1.0).normalize();
+    directionalLight.position.set(0.0, 1.0, 0.0).normalize();
 
 
-    // const directionalLight2 = new Three.DirectionalLight(0x00ff00, 1);
-    // directionalLight2.position.set(0.0, 1.0, 0.0).normalize();
-    // const ambientLight = new Three.AmbientLight(0xdedede, 0.8);
+    const directionalLight2 = new Three.DirectionalLight(0x00ff00, 1);
+    directionalLight2.position.set(0.0, 1.0, 0.0).normalize();
+    const ambientLight = new Three.AmbientLight(0xdedede, 0.8);
 
-    this.scene.add(directionalLight, pointLight);
+    this.scene.add(pointLight, ambientLight);
 
+    this.addSpaceSkydome();
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
     this.camera.rotation.order = 'YXZ';
@@ -35,7 +37,6 @@ export class Stage {
 
     // Ensure pointer lock is maintained
     this.renderer.domElement.addEventListener('click', (e) => {
-      e.preventDefault();
       if (this.cameraMode === 'first-person') {
         this.renderer.domElement.requestPointerLock();
       }
@@ -97,7 +98,7 @@ export class Stage {
         updateMaterial(object3D.material);
       }
   
-      // Handle nested meshes (e.g., in groups)
+      // Handle any meshes that have children (from the planet's moon logic)
       object3D.traverse(child => {
         if (child instanceof Three.Mesh && child.material instanceof Three.ShaderMaterial) {
           updateMaterial(child.material);
@@ -133,9 +134,9 @@ export class Stage {
       // Only process mouse input if pointer is locked
       if (document.pointerLockElement === this.renderer.domElement) {
         const sensitivity = 0.002;
-        const rotationY = this.cameraTarget.getRotation().y - mouse.movementX * sensitivity;
+        const rotationY = this.cameraTarget.getRotation().y - mouse.dx * sensitivity;
         this.cameraTarget.getRotation().y = rotationY;
-        this.cameraPitch -= mouse.movementY * sensitivity;
+        this.cameraPitch -= mouse.dy * sensitivity;
         this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch));
       }
       // Update camera position and rotation
@@ -175,5 +176,42 @@ export class Stage {
     }
     this.updateCamera(context);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  addSpaceSkydome() {
+    const radius = 500; // Radius of the skydome, large enough to encompass the scene
+    const numStars = 200; // Number of stars to generate
+    const positions = new Float32Array(numStars * 3); // Array to hold x, y, z coordinates
+  
+    // Generate random star positions on the sphere's surface
+    for (let i = 0; i < numStars; i++) {
+      const u = Math.random(); // Random value between 0 and 1
+      const v = Math.random(); // Random value between 0 and 1
+      const theta = 2 * Math.PI * u; // Azimuth angle
+      const phi = Math.acos(2 * v - 1); // Inclination angle
+  
+      // Convert spherical coordinates to Cartesian coordinates
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi) * Math.sin(theta);
+      const z = radius * Math.cos(phi);
+  
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+    }
+  
+    // Create geometry and set the positions
+    const geometry = new Three.BufferGeometry();
+    geometry.setAttribute('position', new Three.BufferAttribute(positions, 3));
+  
+    // Create material for the stars
+    const material = new Three.PointsMaterial({
+      color: 0xffffff, // White stars
+      size: 3, // Size of each star (adjustable)
+    });
+  
+    // Create the Points object and add it to the scene
+    const stars = new Three.Points(geometry, material);
+    this.scene.add(stars);
   }
 }
