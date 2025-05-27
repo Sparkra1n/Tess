@@ -2,11 +2,11 @@ import * as Three from "three";
 import { Player } from './Player';
 import { Stage } from './Stage';
 import { Maze } from './Maze';
-import { StaticMesh } from "./Types";
+import { ICollisionHandler, StaticMesh } from "./Types";
 import { createToonShader, Ramp } from "./ToonShader";
 
-export class Supervisor {
-  private player = new Player();
+export class Supervisor implements ICollisionHandler {
+  private player = new Player(3, this);
   private stage = new Stage();
   private input = new Set<string>();
   private mouse = { x: 0, y: 0, dx: 0, dy: 0 };
@@ -57,32 +57,46 @@ export class Supervisor {
     //   [lines, null, null, dot3],
     //   [new Three.Color(0x6A0006), null, null, new Three.Color(0xFFC9C7)]
     // );
+const ramp = new Ramp(
+  new Three.Color(0x273214), // Shadow
+  new Three.Color(0x586C15), // Base
+  new Three.Color(0x7E9223), // Intermediate
+  new Three.Color(0xADC040), // Highlight
+  //[4, 30, 33, 33], // no shadow
+  [5, 29, 33, 33], // 50% shadow
+  [null, null, null, null], // Grunge textures
+  [new Three.Color(0x050801), null, null, null] // Grunge colors
+);
 
-    const ramp = new Ramp(
-      new Three.Color(0x273214), // Shadow becomes #050801
-      new Three.Color(0x586C15), // Base becomes #182601
-      new Three.Color(0x7E9223), // Intermediate becomes #354904
-      new Three.Color(0xADC040), // Highlight becomes #6A860D
-      [lines, null, null, null], // Disable grunge for testing
-      [new Three.Color(0x050801), null, null, null]
-    );
-    
-    const sphere = StaticMesh.fromGeometry(new Three.SphereGeometry(3, 36, 36), createToonShader(ramp));
-    sphere.setPosition(5, 3, 5);
-    this.stage.addObject(sphere);
     this.stage.setCameraFollow(this.player);
     this.run();
   }
 
+  willCollide(position: Three.Vector3): boolean {
+    const wallsNearby: Three.Box3[] = this.maze.getNearbyWallColliders(this.player.getPosition(), this.player.getSize());
+    const playerPotentialPositionBoundingBox: Three.Box3 = this.player.getBoundingBoxAt(position);
+    for (const wall of wallsNearby) {
+      if (playerPotentialPositionBoundingBox.intersectsBox(wall))
+        return true;
+    }
+    return false;
+  }
+
+  getCollisionNormal(position: Three.Vector3): Three.Vector3 {
+    // You could base this on nearest open space or predefined normal map
+    return new Three.Vector3(0, 0, 1); // Example: wall facing backward
+  }
+
   run() {
     let lastTime = performance.now();
+
     const loop = (time: number) => {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
-        mouse: { ...this.mouse }
+        mouse: this.mouse
       });
       this.mouse.dx = 0;
       this.mouse.dy = 0;

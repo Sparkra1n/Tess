@@ -1,24 +1,20 @@
 import * as Three from 'three';
-import { Direction, dx, dy, opposite } from "./Directions.ts";
+import { Direction, dx, dy as dz, opposite } from "./Directions.ts";
 import { StaticMesh } from "./Types.ts";
 import { Ramp, createToonShader } from "./ToonShader.ts"
-import { GameContext } from "./GameContext.ts"
 
 export type Grid = number[][];
 
+//TODO: replace with provided tuple in 3js
 export class Point2 {
-  constructor(public x: number, public y: number) { }
-
-  static of(x: number, y: number): Point2 {
-    return new Point2(x, y);
-  }
+  constructor(public x: number, public z: number) {}
 }
 
 export class WallSegment {
-  constructor(public p1: Point2, public p2: Point2) { }
+  constructor(public p1: Point2, public p2: Point2) {}
 
-  static fromCoords(x1: number, y1: number, x2: number, y2: number): WallSegment {
-    return new WallSegment(new Point2(x1, y1), new Point2(x2, y2));
+  static fromCoords(x1: number, z1: number, x2: number, z2: number): WallSegment {
+    return new WallSegment(new Point2(x1, z1), new Point2(x2, z2));
   }
 }
 
@@ -28,6 +24,8 @@ export class Maze extends StaticMesh {
   private cellSize: number;
   private wallHeight: number;
   private wallSegments: WallSegment[] = [];
+  private wallBoxes: Three.Box3[] = []; // Array to store wall colliders
+  private wallLists: Three.Box3[][][] = []; // 2D array for spatial lookup
   private grid: Grid;
 
   constructor(width: number, height: number, cellSize: number, wallHeight: number) {
@@ -40,35 +38,36 @@ export class Maze extends StaticMesh {
     this.grid = Array.from(Array(height), _ => Array(width).fill(0));
     this.generateMazeMesh();
 
+    // Create floor
     const floorGeometry = new Three.BoxGeometry(
       this.width * this.cellSize,
-      1, // height (thickness of the floor)
+      1,
       this.height * this.cellSize
     );
-    const floorMaterial = new Three.MeshStandardMaterial({ color: 0x888888 }); // or your toon shader material
+    const floorMaterial = new Three.MeshStandardMaterial({ color: 0x888888 });
     const floorMesh = new Three.Mesh(floorGeometry, floorMaterial);
     
-    // Position it at y = 0 (or slightly under your walls)
     floorMesh.position.set(
       (this.width * this.cellSize) / 2,
-      -0.5, // Adjust as needed
+      -0.5,
       (this.height * this.cellSize) / 2
     );
     
     this.mesh.add(floorMesh);
   }
 
-  private carvePassagesFrom(x: number, y: number): void {
+  private carvePassagesFrom(x: number, z: number): void {
     const directions = [Direction.North, Direction.South, Direction.East, Direction.West]
       .sort(() => Math.random() - 0.5);
 
     for (const dir of directions) {
       const nx = x + dx(dir);
-      const ny = y + dy(dir);
-      if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height && this.grid[ny][nx] === 0) {
-        this.grid[y][x] |= dir;
-        this.grid[ny][nx] |= opposite(dir);
-        this.carvePassagesFrom(nx, ny);
+      const nz = z + dz(dir);
+
+      if (nx >= 0 && nx < this.width && nz >= 0 && nz < this.height && this.grid[nz][nx] === 0) {
+        this.grid[z][x] |= dir;
+        this.grid[nz][nx] |= opposite(dir);
+        this.carvePassagesFrom(nx, nz);
       }
     }
   }
@@ -130,14 +129,12 @@ export class Maze extends StaticMesh {
     this.generateMaze();
     this.createWallSegments();
 
-        const ramp = new Ramp(
-          new Three.Color(0x273214), // Shadow becomes #050801
-          new Three.Color(0x586C15), // Base becomes #182601
-          new Three.Color(0x7E9223), // Intermediate becomes #354904
-          new Three.Color(0xADC040), // Highlight becomes #6A860D
-          [null, null, null, null], // Disable grunge for testing
-          [new Three.Color(0x050801), null, null, null]
-        );
+    const ramp = new Ramp(
+      new Three.Color(0x273214),
+      new Three.Color(0x586C15),
+      new Three.Color(0x7E9223),
+      new Three.Color(0xADC040)
+    );
 
     const material = createToonShader(ramp);
     const wallThickness = this.cellSize * 0.1;
@@ -151,50 +148,46 @@ export class Maze extends StaticMesh {
       let geometry: Three.BoxGeometry;
       let position: Three.Vector3;
   
-      if (p1.x === p2.x) {
-        // Vertical wall (constant x, spans z)
+      if (p1.x === p2.x) { // Vertical wall
         const x = p1.x * this.cellSize;
-        const z1 = Math.min(p1.y, p2.y) * this.cellSize;
-        const z2 = Math.max(p1.y, p2.y) * this.cellSize;
+        const z1 = Math.min(p1.z, p2.z) * this.cellSize;
+        const z2 = Math.max(p1.z, p2.z) * this.cellSize;
   
         const xMin = x - wallThickness / 2;
         const xMax = x + wallThickness / 2;
-        // Extend z extents by wallThickness/2 on each end
         const zMin = z1 - wallThickness / 2;
         const zMax = z2 + wallThickness / 2;
   
-        const width = xMax - xMin; // Thickness in x
+        const width = xMax - xMin;
         const height = this.wallHeight;
-        const depth = zMax - zMin; // Extended length in z
+        const depth = zMax - zMin;
   
         geometry = new Three.BoxGeometry(width, height, depth);
         position = new Three.Vector3(
-          (xMin + xMax) / 2,      // Center in x
-          this.wallHeight / 2,    // Center in y
-          (zMin + zMax) / 2       // Center in z
+          (xMin + xMax) / 2,
+          this.wallHeight / 2,
+          (zMin + zMax) / 2
         );
         this.adjustBoxUVs(geometry, width, height, depth, uvScale);
-      } else {
-        // Horizontal wall (constant z, spans x)
-        const z = p1.y * this.cellSize;
+      } else { // Horizontal wall
+        const z = p1.z * this.cellSize;
         const x1 = Math.min(p1.x, p2.x) * this.cellSize;
         const x2 = Math.max(p1.x, p2.x) * this.cellSize;
   
         const zMin = z - wallThickness / 2;
         const zMax = z + wallThickness / 2;
-        // Extend x extents by wallThickness/2 on each end
         const xMin = x1 - wallThickness / 2;
         const xMax = x2 + wallThickness / 2;
   
-        const width = xMax - xMin; // Extended length in x
+        const width = xMax - xMin;
         const height = this.wallHeight;
-        const depth = zMax - zMin; // Thickness in z
+        const depth = zMax - zMin;
   
         geometry = new Three.BoxGeometry(width, height, depth);
         position = new Three.Vector3(
-          (xMin + xMax) / 2,      // Center in x
-          this.wallHeight / 2,    // Center in y
-          (zMin + zMax) / 2       // Center in z
+          (xMin + xMax) / 2,
+          this.wallHeight / 2,
+          (zMin + zMax) / 2
         );
         this.adjustBoxUVs(geometry, width, height, depth, uvScale);
       }
@@ -202,8 +195,15 @@ export class Maze extends StaticMesh {
       geometry.computeVertexNormals();
       const wallMesh = new Three.Mesh(geometry, material);
       wallMesh.position.set(position.x, position.y, position.z);
+
+      const wallBox = new Three.Box3().setFromObject(wallMesh);
+      wallMesh.userData.collider = wallBox;
+      this.wallBoxes.push(wallBox); // Store the collider
       group.add(wallMesh);
     }
+
+    // Populate the spatial lookup after creating all wall meshes
+    this.populateWallLists();
   }
 
   adjustBoxUVs(
@@ -261,5 +261,72 @@ export class Maze extends StaticMesh {
       });
     }
     uvAttribute.needsUpdate = true;
+  }
+
+  // Populate the spatial lookup structure
+  private populateWallLists(): void {
+    this.wallLists = Array.from(Array(this.height), _ => Array.from(Array(this.width), _ => []));
+
+    for (let idx = 0; idx < this.wallSegments.length; idx++) {
+      const segment = this.wallSegments[idx];
+      const wallBox = this.wallBoxes[idx];
+
+      if (segment.p1.x === segment.p2.x) { // Vertical wall
+        const i = segment.p1.x;
+        const j1 = Math.min(segment.p1.z, segment.p2.z);
+        const j2 = Math.max(segment.p1.z, segment.p2.z);
+
+        // Limit to the wall height (y)
+        for (let k = j1; k < j2; k++) {
+          if (i > 0 && k >= 0 && k < this.height) {
+            this.wallLists[k][i - 1].push(wallBox); // East wall for cell (i-1, k)
+          }
+          if (i < this.width && k >= 0 && k < this.height) {
+            this.wallLists[k][i].push(wallBox); // West wall for cell (i, k)
+          }
+        }
+      } else if (segment.p1.z === segment.p2.z) { // Horizontal wall
+        const j = segment.p1.z;
+        const i1 = Math.min(segment.p1.x, segment.p2.x);
+        const i2 = Math.max(segment.p1.x, segment.p2.x);
+
+        for (let k = i1; k < i2; k++) {
+          if (j > 0 && k >= 0 && k < this.width) {
+            this.wallLists[j - 1][k].push(wallBox); // South wall for cell (k, j-1)
+          }
+          if (j < this.height && k >= 0 && k < this.width) {
+            this.wallLists[j][k].push(wallBox); // North wall for cell (k, j)
+          }
+        }
+      }
+    }
+  }
+
+  // Get nearby wall colliders for a player's position
+  public getNearbyWallColliders(playerPos: Three.Vector3, playerSize: number = this.cellSize): Three.Box3[] {
+    // Assume player has a box collider centered at playerPos with a given size
+    const halfSize = playerSize / 2;
+    const minX = playerPos.x - halfSize;
+    const maxX = playerPos.x + halfSize;
+    const minZ = playerPos.z - halfSize;
+    const maxZ = playerPos.z + halfSize;
+
+    const minGridX = Math.max(0, Math.floor(minX / this.cellSize));
+    const maxGridX = Math.min(this.width - 1, Math.floor(maxX / this.cellSize));
+    const minGridZ = Math.max(0, Math.floor(minZ / this.cellSize));
+    const maxGridZ = Math.min(this.height - 1, Math.floor(maxZ / this.cellSize));
+
+    const wallSet = new Array<Three.Box3>();
+
+    for (let gridZ = minGridZ; gridZ <= maxGridZ; gridZ++) {
+      for (let gridX = minGridX; gridX <= maxGridX; gridX++) {
+        const colliders = this.wallLists[gridZ][gridX];
+        for (const collider of colliders) {
+          wallSet.push(collider);
+        }
+      }
+    }
+
+    return wallSet;
   }
 }

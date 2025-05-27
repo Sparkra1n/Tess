@@ -7,25 +7,30 @@
 import * as Three from 'three';
 import { RenderableObject } from './Types';
 import { GameContext } from "./GameContext.ts"
+import { Supervisor } from './Supervisor.ts';
 
 type Axis = 'x' | 'y' | 'z' | 'w';
 type Plane = [Axis, Axis];
 
 export class Player implements RenderableObject {
-  position = new Three.Vector3(0, 0, 0);
-  velocity = new Three.Vector3(0, 0, 0);
-  direction = new Three.Vector3(0, 0, 1);
-  rotation = new Three.Vector3(0, 0, 0);
-  w = 0;
-  speed = 0.2;
-  jumpSpeed = 0.2;
-  gravity = -0.01;
-  grounded = true;
-  mesh = new Three.Group();
-  vertices4D = Player.generateTesseractVertices4D(3);
-  wireframe: Three.LineSegments;
+  private position = new Three.Vector3(0, 0, 0);
+  private velocity = new Three.Vector3(0, 0, 0);
+  private direction = new Three.Vector3(0, 0, 1);
+  private rotation = new Three.Vector3(0, 0, 0);
+  private w = 0;
+  private speed = 0.2;
+  private jumpSpeed = 0.2;
+  private gravity = -0.01;
+  private grounded = true;
+  private mesh = new Three.Group();
+  private vertices4D = this.generateTesseractVertices4D();
+  private wireframe: Three.LineSegments;
+  private size: number;
+  private supervisor: Supervisor;
 
-  constructor() {
+  constructor(size: number = 3, supervisor: Supervisor) {
+    this.size = size;
+    this.supervisor = supervisor;
     const initialProjected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
     const edges = Player.generateTesseractEdges(this.vertices4D);
     this.wireframe = this.createWireframe(initialProjected, edges);
@@ -33,8 +38,8 @@ export class Player implements RenderableObject {
     this.mesh.position.copy(this.position);
   }
 
-  static generateTesseractVertices4D(size: number): Three.Vector4[] {
-    const half = size / 2;
+  generateTesseractVertices4D(): Three.Vector4[] {
+    const half = this.size / 2;
     const vertices: Three.Vector4[] = [];
     for (let x of [-half, half])
       for (let y of [-half, half])
@@ -84,6 +89,16 @@ export class Player implements RenderableObject {
     return this.rotation;
   }
 
+  getSize() {
+    return this.size;
+  }
+
+  getBoundingBoxAt(position: Three.Vector3) {
+    const min = position.clone().add(new Three.Vector3(-this.size/2, -this.size/2, -this.size/2));
+    const max = position.clone().add(new Three.Vector3(this.size/2, this.size/2, this.size/2));
+    return new Three.Box3(min, max);
+  }
+
   projectPerspective4Dto3D(v4: Three.Vector4) {
     const perspectiveD = 3;
     const w = Math.max(-1, Math.min(1, v4.w + this.w));
@@ -100,21 +115,22 @@ export class Player implements RenderableObject {
   }
 
   update(context: GameContext): void {
+    let p = this.position;
     for (const key of context.input) {
       switch (key) {
         case 'w':
-          this.position.add(this.direction.clone().multiplyScalar(-this.speed));
+          p.add(this.direction.clone().multiplyScalar(-this.speed));
           break;
         case 's':
-          this.position.add(this.direction.clone().multiplyScalar(this.speed));
+          p.add(this.direction.clone().multiplyScalar(this.speed));
           break;
         case 'a':
           const left = new Three.Vector3().crossVectors(new Three.Vector3(0, 1, 0), this.direction).normalize();
-          this.position.add(left.multiplyScalar(-this.speed));
+          p.add(left.multiplyScalar(-this.speed));
           break;
         case 'd':
           const right = new Three.Vector3().crossVectors(this.direction, new Three.Vector3(0, 1, 0)).normalize();
-          this.position.add(right.multiplyScalar(-this.speed));
+          p.add(right.multiplyScalar(-this.speed));
           break;
         case ' ':
           if (this.grounded) {
@@ -123,6 +139,16 @@ export class Player implements RenderableObject {
           }
           break;
       }
+      // Why is this line causing
+    }
+    if (this.supervisor.willCollide(p))
+    {
+      console.log("collided");
+    }
+    else
+    {
+      this.position = p;
+      console.log("didn't collide");
     }
 
     this.direction = new Three.Vector3(Math.sin(this.rotation.y), 0, Math.cos(this.rotation.y)).normalize();

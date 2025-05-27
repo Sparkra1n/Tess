@@ -19,28 +19,19 @@ export class Stage {
     pointLight.position.set(10, 10, 10);
     this.scene.add(pointLight);
 
-    // const directionalLight = new Three.DirectionalLight(0xdedede, 1);
-    // directionalLight.position.set(0.0, 1.0, 0.0).normalize();
-
-
-    // const directionalLight2 = new Three.DirectionalLight(0x00ff00, 1);
-    // directionalLight2.position.set(0.0, 1.0, 0.0).normalize();
-    // const ambientLight = new Three.AmbientLight(0xdedede, 0.8);
-
-    this.scene.add(pointLight);
+    const ambientLight = new Three.AmbientLight(0x404040, 0.3);
+    this.scene.add(ambientLight);
 
     this.addSpaceSkydome();
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
     this.camera.rotation.order = 'YXZ';
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    // this.renderer.outputEncoding = Three.LinearEncoding; // Prevent sRGB conversion
-    this.renderer.toneMapping = Three.NoToneMapping; // Disable tone mapping
+    this.renderer.toneMapping = Three.NoToneMapping;
     this.renderer.outputColorSpace = Three.LinearSRGBColorSpace;
     document.body.appendChild(this.renderer.domElement);
 
-    // Ensure pointer lock is maintained
-    this.renderer.domElement.addEventListener('click', (e) => {
+    this.renderer.domElement.addEventListener('click', () => {
       if (this.cameraMode === 'first-person') {
         this.renderer.domElement.requestPointerLock();
       }
@@ -52,62 +43,81 @@ export class Stage {
     this.scene.add(obj.getMesh());
   }
 
-  private updateUniforms(): void {
-    const viewMatrix = this.camera.matrixWorldInverse;
-    const pointLights = this.scene.children.filter(
-      child => child instanceof Three.PointLight
-    ) as Three.PointLight[];
-    const maxLights = 4;
-    const numPointLights = Math.min(pointLights.length, maxLights);
-  
-    const pointLightPosView = pointLights.slice(0, maxLights).map(light => {
-      return light.position.clone().applyMatrix4(viewMatrix);
+  private computeWorldSpaceLights<T extends Three.Light>(
+    lights: T[],
+    maxLights: number,
+    normalize: boolean
+  ): { vectors: Three.Vector3[], colors: Three.Color[], numLights: number } {
+    const numLights = Math.min(lights.length, maxLights);
+    const vectors = new Array<Three.Vector3>(maxLights).fill(new Three.Vector3(0, 0, 0));
+    const colors = new Array<Three.Color>(maxLights).fill(new Three.Color(1, 1, 1));
+    lights.slice(0, maxLights).forEach((light, i) => {
+      // Use world-space position directly
+      const vector = light.position.clone();
+      if (normalize) vector.normalize(); // Only for directional lights, if present
+      vectors[i] = vector;
+      colors[i] = light.color.clone();
     });
-    while (pointLightPosView.length < maxLights) {
-      pointLightPosView.push(new Three.Vector3(0, 0, 0));
-    }
-  
-    this.objects.forEach(obj => {
-      const object3D = obj.getMesh();
-      const updateMaterial = (material: Three.ShaderMaterial) => {
-        if (material.uniforms.numDirectionalLights) {
-          material.uniforms.numDirectionalLights.value = 0;
-          material.uniforms.directionalLightDirections.value.forEach((dir: Three.Vector3) => dir.set(0, 0, 0));
-          material.uniforms.numPointLights.value = numPointLights;
-          pointLightPosView.forEach((pos, i) => {
-            material.uniforms.pointLightPositions.value[i].copy(pos);
-          });
-        }
-      };
-  
-      if (object3D instanceof Three.Mesh && object3D.material instanceof Three.ShaderMaterial) {
-        updateMaterial(object3D.material);
-      }
-  
-      object3D.traverse(child => {
-        if (child instanceof Three.Mesh && child.material instanceof Three.ShaderMaterial) {
-          updateMaterial(child.material);
-        }
-      });
-    });
+    return { vectors, colors, numLights };
   }
-
+  
+  private updateUniforms(): void {
+    const maxLights = 4;
+  
+    const pointLights = this.scene.children.filter(child => child instanceof Three.PointLight) as Three.PointLight[];
+    const directionalLights = this.scene.children.filter(child => child instanceof Three.DirectionalLight) as Three.DirectionalLight[];
+    const ambientLights = this.scene.children.filter(child => child instanceof Three.AmbientLight) as Three.AmbientLight[];
+  
+    const pointLightData = this.computeWorldSpaceLights(pointLights, maxLights, false);
+    const directionalLightData = this.computeWorldSpaceLights(directionalLights, maxLights, true); // True for normalization if directional lights are added
+  
+    let ambientColor = new Three.Color(0, 0, 0);
+    let ambientIntensity = 0.0;
+    ambientLights.forEach(light => {
+      ambientColor.add(light.color.clone().multiplyScalar(light.intensity));
+      ambientIntensity += light.intensity;
+    });
+    ambientIntensity = Math.min(ambientIntensity, 1.0);
+  
+    for (const obj of this.objects) {
+      obj.getMesh().traverse(child => {
+        if (!(child instanceof Three.Mesh) || !(child.material instanceof Three.ShaderMaterial)) return;
+        const material = child.material;
+        if (!material.uniforms.numPointLights) return;
+  
+        // Point lights (world space)
+        material.uniforms.numPointLights.value = pointLightData.numLights;
+        pointLightData.vectors.forEach((pos, i) => {
+          material.uniforms.pointLightPositions.value[i].copy(pos);
+          material.uniforms.pointLightColors.value[i].copy(pointLightData.colors[i]);
+        });
+  
+        // Directional lights (world space, if any)
+        material.uniforms.numDirectionalLights.value = directionalLightData.numLights;
+        directionalLightData.vectors.forEach((dir, i) => {
+          material.uniforms.directionalLightDirections.value[i].copy(dir);
+          material.uniforms.directionalLightColors.value[i].copy(directionalLightData.colors[i]);
+        });
+  
+        // Ambient lights
+        material.uniforms.ambientLightColor.value.copy(ambientColor);
+        material.uniforms.ambientIntensity.value = ambientIntensity;
+      });
+    }
+  }
+  
   setCameraFollow(target: RenderableObject) {
     this.cameraTarget = target;
   }
 
   toggleCameraMode() {
     const modes: ('third-person' | 'first-person' | 'top-down')[] = ['third-person', 'first-person', 'top-down'];
-    const currentIndex = modes.indexOf(this.cameraMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    this.cameraMode = modes[nextIndex];
+    this.cameraMode = modes[(modes.indexOf(this.cameraMode) + 1) % modes.length];
 
     if (this.cameraMode === 'first-person') {
       this.renderer.domElement.requestPointerLock();
-    } else {
-      if (document.pointerLockElement === this.renderer.domElement) {
-        document.exitPointerLock();
-      }
+    } else if (document.pointerLockElement === this.renderer.domElement) {
+      document.exitPointerLock();
     }
   }
 
@@ -116,87 +126,68 @@ export class Stage {
     const { deltaTime, mouse } = context;
 
     if (this.cameraMode === 'first-person') {
-      // Only process mouse input if pointer is locked
       if (document.pointerLockElement === this.renderer.domElement) {
         const sensitivity = 0.002;
-        const rotationY = this.cameraTarget.getRotation().y - mouse.dx * sensitivity;
-        this.cameraTarget.getRotation().y = rotationY;
-        this.cameraPitch -= mouse.dy * sensitivity;
-        this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch));
+        const rotation = this.cameraTarget.getRotation();
+        rotation.y -= mouse.dx * sensitivity;
+        this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch - mouse.dy * sensitivity));
       }
-      // Update camera position and rotation
-      this.camera.position.copy(this.cameraTarget.getPosition());
-      this.camera.position.y += 3; // Eye height
-      this.camera.rotation.y = this.cameraTarget.getRotation().y;
-      this.camera.rotation.x = this.cameraPitch;
-    } else if (this.cameraMode === 'third-person') {
+      this.camera.position.copy(this.cameraTarget.getPosition()).add(new Three.Vector3(0, 3, 0));
+      this.camera.rotation.set(this.cameraPitch, this.cameraTarget.getRotation().y, 0);
+    } 
+    
+    else if (this.cameraMode === 'third-person') {
       const targetPosition = this.cameraTarget.getMesh().position;
-      const direction = this.cameraTarget.getDirection();
-      const offset = direction.clone().multiplyScalar(-this.cameraOffset.z);
-      offset.y = this.cameraOffset.y;
+      const direction = new Three.Vector3(0, 0, 1);
+      const offset = direction.clone().multiplyScalar(-this.cameraOffset.z).setY(this.cameraOffset.y);
       const desiredPosition = targetPosition.clone().add(offset);
       const alpha = 1 - Math.pow(1 - this.lerpFactor, deltaTime);
       this.camera.position.lerp(desiredPosition, alpha);
       this.camera.lookAt(targetPosition);
-    } else if (this.cameraMode === 'top-down') {
+    } 
+    
+    else if (this.cameraMode === 'top-down') {
       const targetPosition = this.cameraTarget.getMesh().position;
       const desiredPosition = new Three.Vector3(targetPosition.x, 25, targetPosition.z);
       const alpha = 1 - Math.pow(1 - this.lerpFactor, deltaTime);
       this.camera.position.lerp(desiredPosition, alpha);
-      this.camera.lookAt(targetPosition.x, 0, targetPosition.z);
+      this.camera.lookAt(targetPosition);
     }
   }
 
   update(context: GameContext): void {
     const cPressed = context.input.has('c');
-    if (cPressed && !this.lastCState) {
-      this.toggleCameraMode();
-    }
+    if (cPressed && !this.lastCState) this.toggleCameraMode();
     this.lastCState = cPressed;
 
+    this.updateUniforms();
     for (const obj of this.objects) {
-      if (obj === null) continue;
+      if (!obj) continue;
       obj.update(context);
-      this.updateUniforms();
     }
     this.updateCamera(context);
     this.renderer.render(this.scene, this.camera);
   }
 
+  //TODO: take out of stage
   addSpaceSkydome() {
-    const radius = 500; // Radius of the skydome, large enough to encompass the scene
-    const numStars = 200; // Number of stars to generate
-    const positions = new Float32Array(numStars * 3); // Array to hold x, y, z coordinates
-  
-    // Generate random star positions on the sphere's surface
+    const radius = 500;
+    const numStars = 200;
+    const positions = new Float32Array(numStars * 3);
+
     for (let i = 0; i < numStars; i++) {
-      const u = Math.random(); // Random value between 0 and 1
-      const v = Math.random(); // Random value between 0 and 1
-      const theta = 2 * Math.PI * u; // Azimuth angle
-      const phi = Math.acos(2 * v - 1); // Inclination angle
-  
-      // Convert spherical coordinates to Cartesian coordinates
-      const x = radius * Math.sin(phi) * Math.cos(theta);
-      const y = radius * Math.sin(phi) * Math.sin(theta);
-      const z = radius * Math.cos(phi);
-  
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = z;
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+      positions[i * 3 + 2] = radius * Math.cos(phi);
     }
-  
-    // Create geometry and set the positions
+
     const geometry = new Three.BufferGeometry();
     geometry.setAttribute('position', new Three.BufferAttribute(positions, 3));
-  
-    // Create material for the stars
-    const material = new Three.PointsMaterial({
-      color: 0xffffff, // White stars
-      size: 3, // Size of each star (adjustable)
-    });
-  
-    // Create the Points object and add it to the scene
-    const stars = new Three.Points(geometry, material);
-    this.scene.add(stars);
+    const material = new Three.PointsMaterial({ color: 0xffffff, size: 3 });
+    this.scene.add(new Three.Points(geometry, material));
   }
 }
