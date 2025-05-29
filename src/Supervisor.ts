@@ -30,7 +30,7 @@ export class Supervisor implements ICollisionHandler {
 
     this.stage.addObject(this.maze);
     this.stage.addObject(this.player);
-
+    this.player.setPosition(3, 100, 3);
     
     const lines = new Three.TextureLoader().load('lines.png');
     lines.wrapS = Three.RepeatWrapping;
@@ -64,10 +64,15 @@ const ramp = new Ramp(
   new Three.Color(0xADC040), // Highlight
   //[4, 30, 33, 33], // no shadow
   [5, 29, 33, 33], // 50% shadow
-  [null, null, null, null], // Grunge textures
+  [lines, null, null, null], // Grunge textures
   [new Three.Color(0x050801), null, null, null] // Grunge colors
 );
 
+const s = new StaticMesh(new Three.Mesh(
+  new Three.SphereGeometry(5, 32, 32),
+  createToonShader(ramp)
+));
+  // this.stage.addObject(s);
     this.stage.setCameraFollow(this.player);
     this.run();
   }

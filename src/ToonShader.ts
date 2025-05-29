@@ -115,10 +115,10 @@ uniform float grungeStrength;           // Strength of grunge effect
 uniform vec2 grungeScale;               // Scale for grunge UVs
 uniform int numDirectionalLights;       // Number of directional lights
 uniform vec3 directionalLightDirections[4]; // World-space directions
-uniform vec3 directionalLightColors[4]; // Colors (unused here for simplicity)
+uniform vec3 directionalLightColors[4]; // Colors I might add later
 uniform int numPointLights;             // Number of point lights
 uniform vec3 pointLightPositions[4];    // Now in world space
-uniform vec3 pointLightColors[4];       // Colors (unused here for simplicity)
+uniform vec3 pointLightColors[4];       // Colors I might add later
 uniform vec3 ambientLightColor;         // Ambient color
 uniform float ambientIntensity;         // Ambient strength
 

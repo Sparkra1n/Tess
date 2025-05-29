@@ -53,8 +53,7 @@ export class Stage {
     const colors = new Array<Three.Color>(maxLights).fill(new Three.Color(1, 1, 1));
     lights.slice(0, maxLights).forEach((light, i) => {
       // Use world-space position directly
-      const vector = light.position.clone();
-      if (normalize) vector.normalize(); // Only for directional lights, if present
+      const vector = light.position.clone() // only for directional lights
       vectors[i] = vector;
       colors[i] = light.color.clone();
     });
@@ -91,7 +90,6 @@ export class Stage {
           material.uniforms.pointLightPositions.value[i].copy(pos);
           material.uniforms.pointLightColors.value[i].copy(pointLightData.colors[i]);
         });
-  
         // Directional lights (world space, if any)
         material.uniforms.numDirectionalLights.value = directionalLightData.numLights;
         directionalLightData.vectors.forEach((dir, i) => {
@@ -105,7 +103,7 @@ export class Stage {
       });
     }
   }
-  
+
   setCameraFollow(target: RenderableObject) {
     this.cameraTarget = target;
   }

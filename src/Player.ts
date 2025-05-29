@@ -79,6 +79,7 @@ export class Player implements RenderableObject {
 
   setPosition(x: number, y: number, z: number) : void {
     this.mesh.position.set(x, y, z);
+    this.position = new Three.Vector3(x, y, z);
   }
 
   getPosition() {
@@ -115,7 +116,7 @@ export class Player implements RenderableObject {
   }
 
   update(context: GameContext): void {
-    let p = this.position;
+    let p = this.position.clone();
     for (const key of context.input) {
       switch (key) {
         case 'w':
