@@ -37,23 +37,6 @@ export class Maze extends StaticMesh {
     this.wallHeight = wallHeight;
     this.grid = Array.from(Array(height), _ => Array(width).fill(0));
     this.generateMazeMesh();
-
-    // Create floor
-    const floorGeometry = new Three.BoxGeometry(
-      this.width * this.cellSize,
-      1,
-      this.height * this.cellSize
-    );
-    const floorMaterial = new Three.MeshStandardMaterial({ color: 0x888888 });
-    const floorMesh = new Three.Mesh(floorGeometry, floorMaterial);
-    
-    floorMesh.position.set(
-      (this.width * this.cellSize) / 2,
-      -0.5,
-      (this.height * this.cellSize) / 2
-    );
-    
-    this.mesh.add(floorMesh);
   }
 
   private carvePassagesFrom(x: number, z: number): void {
@@ -148,7 +131,8 @@ export class Maze extends StaticMesh {
       let geometry: Three.BoxGeometry;
       let position: Three.Vector3;
   
-      if (p1.x === p2.x) { // Vertical wall
+      // Vertical wall
+      if (p1.x === p2.x) {
         const x = p1.x * this.cellSize;
         const z1 = Math.min(p1.z, p2.z) * this.cellSize;
         const z2 = Math.max(p1.z, p2.z) * this.cellSize;
@@ -169,7 +153,10 @@ export class Maze extends StaticMesh {
           (zMin + zMax) / 2
         );
         this.adjustBoxUVs(geometry, width, height, depth, uvScale);
-      } else { // Horizontal wall
+      } 
+      
+      // Horizontal wall
+      else {
         const z = p1.z * this.cellSize;
         const x1 = Math.min(p1.x, p2.x) * this.cellSize;
         const x2 = Math.max(p1.x, p2.x) * this.cellSize;
@@ -206,52 +193,18 @@ export class Maze extends StaticMesh {
     this.populateWallLists();
   }
 
-  adjustBoxUVs(
-    geometry: Three.BoxGeometry,
-    width: number,
-    height: number,
-    depth: number,
-    uvScale: number
-  ): void {
+  adjustBoxUVs( geometry: Three.BoxGeometry, width: number, height: number, depth: number, uvScale: number): void {
     const uvAttribute = geometry.attributes.uv;
-    const uvsPerFace = [
-      [
-        new Three.Vector2(0, 0),
-        new Three.Vector2(depth * uvScale, 0),
-        new Three.Vector2(0, height * uvScale),
-        new Three.Vector2(depth * uvScale, height * uvScale)
-      ],
-      [
-        new Three.Vector2(0, 0),
-        new Three.Vector2(depth * uvScale, 0),
-        new Three.Vector2(0, height * uvScale),
-        new Three.Vector2(depth * uvScale, height * uvScale)
-      ],
-      [
-        new Three.Vector2(0, 0),
-        new Three.Vector2(width * uvScale, 0),
-        new Three.Vector2(0, depth * uvScale),
-        new Three.Vector2(width * uvScale, depth * uvScale)
-      ],
-      [
-        new Three.Vector2(0, 0),
-        new Three.Vector2(width * uvScale, 0),
-        new Three.Vector2(0, depth * uvScale),
-        new Three.Vector2(width * uvScale, depth * uvScale)
-      ],
-      [
-        new Three.Vector2(0, 0),
-        new Three.Vector2(width * uvScale, 0),
-        new Three.Vector2(0, height * uvScale),
-        new Three.Vector2(width * uvScale, height * uvScale)
-      ],
-      [
-        new Three.Vector2(0, 0),
-        new Three.Vector2(width * uvScale, 0),
-        new Three.Vector2(0, height * uvScale),
-        new Three.Vector2(width * uvScale, height * uvScale)
-      ]
-    ];
+    const uvsPerFace: Three.Vector2[][] = [];
+
+    for (let i = 0; i < 6; ++i) {
+      uvsPerFace.push([
+      new Three.Vector2(0, 0),
+      new Three.Vector2(width * uvScale, 0),
+      new Three.Vector2(0, height * uvScale),
+      new Three.Vector2(width * uvScale, height * uvScale)
+      ]);
+    }
 
     for (let face = 0; face < 6; face++) {
       const faceUvs = uvsPerFace[face];
@@ -304,7 +257,7 @@ export class Maze extends StaticMesh {
 
   // Get nearby wall colliders for a player's position
   public getNearbyWallColliders(playerPos: Three.Vector3, playerSize: number = this.cellSize): Three.Box3[] {
-    // Assume player has a box collider centered at playerPos with a given size
+    // Create box collider
     const halfSize = playerSize / 2;
     const minX = playerPos.x - halfSize;
     const maxX = playerPos.x + halfSize;

@@ -7,8 +7,8 @@ import { GameContext } from "./GameContext.ts"
 
 // Use observer design method
 export interface ICollisionHandler {
-  willCollide(position: Three.Vector3): boolean;
-  getCollisionNormal(position: Three.Vector3): Three.Vector3; // normal vector
+  willCollide(position: Three.Vector3): { collides: boolean, collisions: { normal: Three.Vector3, depth: number }[] } ;
+  // getCollisionNormal(position: Three.Vector3): Three.Vector3; // normal vector
 }
 
 // Create our virtual base class so we can handle 4D objects like the player

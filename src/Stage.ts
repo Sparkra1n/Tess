@@ -52,8 +52,9 @@ export class Stage {
     const vectors = new Array<Three.Vector3>(maxLights).fill(new Three.Vector3(0, 0, 0));
     const colors = new Array<Three.Color>(maxLights).fill(new Three.Color(1, 1, 1));
     lights.slice(0, maxLights).forEach((light, i) => {
-      // Use world-space position directly
-      const vector = light.position.clone() // only for directional lights
+      // Use world-space position directly, not view space
+      // view space causes issues with flickering when the player moves
+      const vector = light.position.clone()
       vectors[i] = vector;
       colors[i] = light.color.clone();
     });

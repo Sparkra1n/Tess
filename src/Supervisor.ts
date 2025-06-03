@@ -73,24 +73,59 @@ const s = new StaticMesh(new Three.Mesh(
   createToonShader(ramp)
 ));
   // this.stage.addObject(s);
+
+  
+    // this.floor = new Three.Box3(
+    //   new Three.Vector3(0, -1, 0),
+    //   new Three.Vector3(50, 0, 50),
+    // );
     this.stage.setCameraFollow(this.player);
     this.run();
   }
 
-  willCollide(position: Three.Vector3): boolean {
-    const wallsNearby: Three.Box3[] = this.maze.getNearbyWallColliders(this.player.getPosition(), this.player.getSize());
-    const playerPotentialPositionBoundingBox: Three.Box3 = this.player.getBoundingBoxAt(position);
-    for (const wall of wallsNearby) {
-      if (playerPotentialPositionBoundingBox.intersectsBox(wall))
-        return true;
+  willCollide(position: Three.Vector3): { collides: boolean, collisions: { normal: Three.Vector3, depth: number }[] }
+  {
+    const playerBox = this.player.getBoundingBoxAt(position);
+    const collisions: { normal: Three.Vector3, depth: number }[] = [];
+    
+    // Ground collision
+    if (playerBox.min.y < 0) {
+      collisions.push({ normal: new Three.Vector3(0, 1, 0), depth: -playerBox.min.y });
     }
-    return false;
+    
+    // Wall collisions
+    const wallsNearby: Three.Box3[] = this.maze.getNearbyWallColliders(this.player.getPosition(), this.player.getSize());
+    const playerCenter = new Three.Vector3();
+    playerBox.getCenter(playerCenter);
+    
+    for (const wall of wallsNearby) {
+      if (playerBox.intersectsBox(wall)) {
+        const wallCenter = new Three.Vector3();
+        wall.getCenter(wallCenter);
+        // Calculate overlap along x and z axes
+        const overlapX = Math.min(playerBox.max.x, wall.max.x) - Math.max(playerBox.min.x, wall.min.x);
+        const overlapZ = Math.min(playerBox.max.z, wall.max.z) - Math.max(playerBox.min.z, wall.min.z);
+        
+        let normal: Three.Vector3;
+        let depth: number;
+        if (overlapX < overlapZ) {
+          // Collision primarily along x-axis
+          const direction = playerCenter.x < wallCenter.x ? -1 : 1;
+          normal = new Three.Vector3(direction, 0, 0);
+          depth = overlapX;
+        } else {
+          // Collision primarily along z-axis
+          const direction = playerCenter.z < wallCenter.z ? -1 : 1;
+          normal = new Three.Vector3(0, 0, direction);
+          depth = overlapZ;
+        }
+        collisions.push({ normal, depth });
+      }
+    }
+    
+    return { collides: collisions.length > 0, collisions };
   }
 
-  getCollisionNormal(position: Three.Vector3): Three.Vector3 {
-    // You could base this on nearest open space or predefined normal map
-    return new Three.Vector3(0, 0, 1); // Example: wall facing backward
-  }
 
   run() {
     let lastTime = performance.now();

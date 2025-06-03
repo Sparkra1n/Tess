@@ -21,7 +21,6 @@ export class Player implements RenderableObject {
   private speed = 0.2;
   private jumpSpeed = 0.2;
   private gravity = -0.01;
-  private grounded = true;
   private mesh = new Three.Group();
   private vertices4D = this.generateTesseractVertices4D();
   private wireframe: Three.LineSegments;
@@ -95,8 +94,10 @@ export class Player implements RenderableObject {
   }
 
   getBoundingBoxAt(position: Three.Vector3) {
-    const min = position.clone().add(new Three.Vector3(-this.size/2, -this.size/2, -this.size/2));
-    const max = position.clone().add(new Three.Vector3(this.size/2, this.size/2, this.size/2));
+    const p = position.clone();
+    const min = p.clone().add(new Three.Vector3(-this.size/2, -this.size/2, -this.size/2));
+    const max = p.clone().add(new Three.Vector3(this.size/2, this.size/2, this.size/2));
+    console.log("Box: ", min, ", ", max);
     return new Three.Box3(min, max);
   }
 
@@ -116,67 +117,102 @@ export class Player implements RenderableObject {
   }
 
   update(context: GameContext): void {
-    let p = this.position.clone();
-    for (const key of context.input) {
-      switch (key) {
-        case 'w':
-          p.add(this.direction.clone().multiplyScalar(-this.speed));
-          break;
-        case 's':
-          p.add(this.direction.clone().multiplyScalar(this.speed));
-          break;
-        case 'a':
-          const left = new Three.Vector3().crossVectors(new Three.Vector3(0, 1, 0), this.direction).normalize();
-          p.add(left.multiplyScalar(-this.speed));
-          break;
-        case 'd':
-          const right = new Three.Vector3().crossVectors(this.direction, new Three.Vector3(0, 1, 0)).normalize();
-          p.add(right.multiplyScalar(-this.speed));
-          break;
-        case ' ':
-          if (this.grounded) {
-            this.velocity.y = this.jumpSpeed;
-            this.grounded = false;
-          }
-          break;
-      }
-      // Why is this line causing
+    // Compute intended horizontal movement vector D
+    let D = new Three.Vector3(0, 0, 0);
+    if (context.input.has('w')) {
+      D.add(this.direction.clone().multiplyScalar(-this.speed));
     }
-    if (this.supervisor.willCollide(p))
-    {
-      console.log("collided");
+    if (context.input.has('s')) {
+      D.add(this.direction.clone().multiplyScalar(this.speed));
     }
-    else
-    {
-      this.position = p;
-      console.log("didn't collide");
+    if (context.input.has('a')) {
+      const left = new Three.Vector3().crossVectors(new Three.Vector3(0, 1, 0), this.direction).normalize();
+      D.add(left.multiplyScalar(-this.speed));
+    }
+    if (context.input.has('d')) {
+      const right = new Three.Vector3().crossVectors(this.direction, new Three.Vector3(0, 1, 0)).normalize();
+      D.add(right.multiplyScalar(-this.speed));
     }
 
+    // Handle horizontal movement with sliding and penetration correction
+    let currentPosition = this.position.clone();
+    let movement = D.clone();
+    const maxIterations = 3;
+    let penetrationCorrection = new Three.Vector3(0, 0, 0);
+    
+    for (let i = 0; i < maxIterations && movement.lengthSq() > 0; i++) {
+      const potentialPosition = currentPosition.clone().add(movement);
+      const collisionInfo = this.supervisor.willCollide(potentialPosition);
+      
+      if (!collisionInfo.collides) {
+        currentPosition.copy(potentialPosition);
+        break;
+      }
+      
+      // Collect penetration corrections and slide movement
+      let remainingMovement = movement.clone();
+      for (const { normal, depth } of collisionInfo.collisions) {
+        if (normal.y === 1)
+          continue; // Skip ground for horizontal movement
+        // Slide: Remove movement component along normal
+        remainingMovement.sub(normal.clone().multiplyScalar(remainingMovement.dot(normal)));
+        // Accumulate correction: Push out along normal by depth
+        penetrationCorrection.add(normal.clone().multiplyScalar(depth));
+      }
+      
+      if (remainingMovement.lengthSq() < 0.0001) {
+        break;
+      }
+      
+      movement = remainingMovement;
+    }
+
+    // Apply movement and penetration correction
+    currentPosition.add(movement);
+    currentPosition.add(penetrationCorrection.multiplyScalar(0.2));
+    this.position.copy(currentPosition);
+
+    // Handle vertical movement
+    const potentialVerticalPosition = this.position.clone();
+    if (context.input.has(' ')) {
+      this.velocity.y = this.jumpSpeed;
+    }
+    this.velocity.y += this.gravity;
+    potentialVerticalPosition.y += this.velocity.y;
+    
+    const verticalCollisionInfo = this.supervisor.willCollide(potentialVerticalPosition);
+    if (!verticalCollisionInfo.collides) {
+      this.position.y = potentialVerticalPosition.y;
+    } else {
+      // Apply vertical penetration correction (for ground)
+      let yCorrection = 0;
+      for (const { normal, depth } of verticalCollisionInfo.collisions) {
+        if (normal.y === 1) {
+          yCorrection = Math.max(yCorrection, depth);
+        }
+      }
+      this.position.y += yCorrection;
+      this.velocity.y = 0;
+    }
+
+    // Update direction based on rotation
     this.direction = new Three.Vector3(Math.sin(this.rotation.y), 0, Math.cos(this.rotation.y)).normalize();
 
-    this.velocity.y += this.gravity;
-    this.position.add(this.velocity);
-    if (this.position.y <= 0) {
-      this.position.y = 0;
-      this.velocity.y = 0;
-      this.grounded = true;
-    }
-
-    // Update tesseract projection
+    // Update mesh position
+    this.mesh.position.copy(this.position);
+    /*
     const projected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
     const positions = projected.map(v => v.toArray()).flat();
     const geometry = this.wireframe.geometry as Three.BufferGeometry;
     geometry.setAttribute('position', new Three.Float32BufferAttribute(positions, 3));
     geometry.attributes.position.needsUpdate = true;
-
-    this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.rotation.y;
-
     for (const v of this.vertices4D) {
       Player.rotate4D(v, ['x', 'y'], 0.01);
       Player.rotate4D(v, ['y', 'z'], 0.008);
       Player.rotate4D(v, ['x', 'z'], 0.005);
     }
+    */
   }
   getMesh(): Three.Object3D {
     return this.mesh;
