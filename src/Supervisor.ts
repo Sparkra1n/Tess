@@ -1,18 +1,28 @@
+/**
+ * @file Supervisor.ts
+ * @brief Contains the Game manager class
+ * @author Thomas Z.
+ * Date: 2025/05/08
+ */
+
 import * as Three from "three";
 import { Player } from './Player';
 import { Stage } from './Stage';
 import { Maze } from './Maze';
-import { ICollisionHandler, StaticMesh } from "./Types";
+import { ICollision, ICollisionHandler } from "./Types";
 import { createToonShader, Ramp } from "./ToonShader";
 
-export class Supervisor implements ICollisionHandler {
+export class Supervisor implements ICollisionHandler
+{
   private player = new Player(3, this);
   private stage = new Stage();
   private input = new Set<string>();
   private mouse = { x: 0, y: 0, dx: 0, dy: 0 };
   private maze: Maze = new Maze(50, 50, 5, 2);
+  private pelletsEaten: number = 0;
 
-  constructor() {
+  constructor()
+  {
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
@@ -28,6 +38,7 @@ export class Supervisor implements ICollisionHandler {
       this.input.delete(e.key)
     });
 
+    this.maze.spawnPellets();
     this.stage.addObject(this.maze);
     this.stage.addObject(this.player);
     this.player.setPosition(3, 100, 3);
@@ -57,21 +68,21 @@ export class Supervisor implements ICollisionHandler {
     //   [lines, null, null, dot3],
     //   [new Three.Color(0x6A0006), null, null, new Three.Color(0xFFC9C7)]
     // );
-const ramp = new Ramp(
-  new Three.Color(0x273214), // Shadow
-  new Three.Color(0x586C15), // Base
-  new Three.Color(0x7E9223), // Intermediate
-  new Three.Color(0xADC040), // Highlight
-  //[4, 30, 33, 33], // no shadow
-  [5, 29, 33, 33], // 50% shadow
-  [lines, null, null, null], // Grunge textures
-  [new Three.Color(0x050801), null, null, null] // Grunge colors
-);
+// const ramp = new Ramp(
+//   new Three.Color(0x273214), // Shadow
+//   new Three.Color(0x586C15), // Base
+//   new Three.Color(0x7E9223), // Intermediate
+//   new Three.Color(0xADC040), // Highlight
+//   //[4, 30, 33, 33], // no shadow
+//   [5, 29, 33, 33], // 50% shadow
+//   [lines, null, null, null], // Grunge textures
+//   [new Three.Color(0x050801), null, null, null] // Grunge colors
+// );
 
-const s = new StaticMesh(new Three.Mesh(
-  new Three.SphereGeometry(5, 32, 32),
-  createToonShader(ramp)
-));
+// const s = new StaticMesh(new Three.Mesh(
+//   new Three.SphereGeometry(5, 32, 32),
+//   createToonShader(ramp)
+// ));
   // this.stage.addObject(s);
 
   
@@ -83,10 +94,15 @@ const s = new StaticMesh(new Three.Mesh(
     this.run();
   }
 
-  willCollide(position: Three.Vector3): { collides: boolean, collisions: { normal: Three.Vector3, depth: number }[] }
+  /**
+   * 
+   * @param position 
+   * @returns ICollision[] (empty if no collisions)
+   */
+  willCollide(position: Three.Vector3): ICollision[]
   {
     const playerBox = this.player.getBoundingBoxAt(position);
-    const collisions: { normal: Three.Vector3, depth: number }[] = [];
+    const collisions: ICollision[] = [];
     
     // Ground collision
     if (playerBox.min.y < 0) {
@@ -94,7 +110,11 @@ const s = new StaticMesh(new Three.Mesh(
     }
     
     // Wall collisions
-    const wallsNearby: Three.Box3[] = this.maze.getNearbyWallColliders(this.player.getPosition(), this.player.getSize());
+    const wallsNearby: Three.Box3[] = this.maze.getNearbyWallColliders(
+      this.player.getPosition(),
+      this.player.getSize()
+    );
+
     const playerCenter = new Three.Vector3();
     playerBox.getCenter(playerCenter);
     
@@ -113,7 +133,8 @@ const s = new StaticMesh(new Three.Mesh(
           const direction = playerCenter.x < wallCenter.x ? -1 : 1;
           normal = new Three.Vector3(direction, 0, 0);
           depth = overlapX;
-        } else {
+        }
+        else {
           // Collision primarily along z-axis
           const direction = playerCenter.z < wallCenter.z ? -1 : 1;
           normal = new Three.Vector3(0, 0, direction);
@@ -122,10 +143,23 @@ const s = new StaticMesh(new Three.Mesh(
         collisions.push({ normal, depth });
       }
     }
-    
-    return { collides: collisions.length > 0, collisions };
+    return collisions;
   }
 
+  checkPelletIntersection(position: Three.Vector3): void {
+    const playerBox = this.player.getBoundingBoxAt(position);
+    const pellets = this.maze.getNearbyPellets(this.player.getPosition());
+    
+    for (const {sphere, mesh} of pellets) {
+      if (playerBox.intersectsSphere(sphere)) {
+        this.maze.removePellet(mesh);
+        ++this.pelletsEaten;
+        const pelletCounterElement = document.getElementById('pelletCounter');
+        if (pelletCounterElement)
+          pelletCounterElement.textContent = `Pellets: ${this.pelletsEaten}`;
+      }
+    }
+  }
 
   run() {
     let lastTime = performance.now();

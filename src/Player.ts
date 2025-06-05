@@ -1,6 +1,7 @@
 /**
  * @file Player.ts
- * @brief Contains the the implementation of the maze player.
+ * @brief Contains the implementation of the maze player.
+ * @author Thomas Z.
  * Date: 2025/05/08
  */
 
@@ -12,7 +13,7 @@ import { Supervisor } from './Supervisor.ts';
 type Axis = 'x' | 'y' | 'z' | 'w';
 type Plane = [Axis, Axis];
 
-export class Player implements RenderableObject {
+export class Player extends RenderableObject {
   private position = new Three.Vector3(0, 0, 0);
   private velocity = new Three.Vector3(0, 0, 0);
   private direction = new Three.Vector3(0, 0, 1);
@@ -21,13 +22,13 @@ export class Player implements RenderableObject {
   private speed = 0.2;
   private jumpSpeed = 0.2;
   private gravity = -0.01;
-  private mesh = new Three.Group();
   private vertices4D = this.generateTesseractVertices4D();
   private wireframe: Three.LineSegments;
   private size: number;
   private supervisor: Supervisor;
 
   constructor(size: number = 3, supervisor: Supervisor) {
+    super(new Three.Group());
     this.size = size;
     this.supervisor = supervisor;
     const initialProjected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
@@ -97,7 +98,6 @@ export class Player implements RenderableObject {
     const p = position.clone();
     const min = p.clone().add(new Three.Vector3(-this.size/2, -this.size/2, -this.size/2));
     const max = p.clone().add(new Three.Vector3(this.size/2, this.size/2, this.size/2));
-    console.log("Box: ", min, ", ", max);
     return new Three.Box3(min, max);
   }
 
@@ -133,45 +133,48 @@ export class Player implements RenderableObject {
       const right = new Three.Vector3().crossVectors(this.direction, new Three.Vector3(0, 1, 0)).normalize();
       D.add(right.multiplyScalar(-this.speed));
     }
-
+  
     // Handle horizontal movement with sliding and penetration correction
     let currentPosition = this.position.clone();
     let movement = D.clone();
     const maxIterations = 3;
-    let penetrationCorrection = new Three.Vector3(0, 0, 0);
-    
+    let wallPenetrationCorrection = new Three.Vector3(0, 0, 0);
+  
     for (let i = 0; i < maxIterations && movement.lengthSq() > 0; i++) {
       const potentialPosition = currentPosition.clone().add(movement);
-      const collisionInfo = this.supervisor.willCollide(potentialPosition);
-      
-      if (!collisionInfo.collides) {
+      const collisions = this.supervisor.willCollide(potentialPosition);
+  
+      if (collisions.length === 0) {
         currentPosition.copy(potentialPosition);
         break;
       }
-      
+  
       // Collect penetration corrections and slide movement
       let remainingMovement = movement.clone();
-      for (const { normal, depth } of collisionInfo.collisions) {
-        if (normal.y === 1)
-          continue; // Skip ground for horizontal movement
-        // Slide: Remove movement component along normal
-        remainingMovement.sub(normal.clone().multiplyScalar(remainingMovement.dot(normal)));
-        // Accumulate correction: Push out along normal by depth
-        penetrationCorrection.add(normal.clone().multiplyScalar(depth));
+      for (const { normal, depth } of collisions) {
+        // Skip ground for horizontal movement
+        if (normal.y === 1) 
+          continue;
+
+          // Compute slide direction by removing movement component along normal
+          remainingMovement.sub(normal.clone().multiplyScalar(remainingMovement.dot(normal)));
+
+          // Accumulate correction out along normal by the depth
+          wallPenetrationCorrection.add(normal.clone().multiplyScalar(depth));
       }
-      
+  
       if (remainingMovement.lengthSq() < 0.0001) {
         break;
       }
-      
+  
       movement = remainingMovement;
     }
-
-    // Apply movement and penetration correction
+  
+    // Apply movement and full wall penetration correction
     currentPosition.add(movement);
-    currentPosition.add(penetrationCorrection.multiplyScalar(0.2));
+    currentPosition.add(wallPenetrationCorrection.multiplyScalar(0.2));
     this.position.copy(currentPosition);
-
+  
     // Handle vertical movement
     const potentialVerticalPosition = this.position.clone();
     if (context.input.has(' ')) {
@@ -179,28 +182,33 @@ export class Player implements RenderableObject {
     }
     this.velocity.y += this.gravity;
     potentialVerticalPosition.y += this.velocity.y;
-    
+  
     const verticalCollisionInfo = this.supervisor.willCollide(potentialVerticalPosition);
-    if (!verticalCollisionInfo.collides) {
+    if (verticalCollisionInfo.length === 0) {
       this.position.y = potentialVerticalPosition.y;
-    } else {
-      // Apply vertical penetration correction (for ground)
+    } 
+    
+    else {
+      // Apply vertical correction for ground
       let yCorrection = 0;
-      for (const { normal, depth } of verticalCollisionInfo.collisions) {
+      for (const { normal, depth } of verticalCollisionInfo) {
         if (normal.y === 1) {
           yCorrection = Math.max(yCorrection, depth);
         }
       }
-      this.position.y += yCorrection;
+      // Set position exactly on ground and reset velocity.. or not
+      // const groundY = 0;
+      // const playerHalfHeight = this.size / 2;
+      // this.position.y = groundY + playerHalfHeight;
       this.velocity.y = 0;
     }
-
+  
     // Update direction based on rotation
     this.direction = new Three.Vector3(Math.sin(this.rotation.y), 0, Math.cos(this.rotation.y)).normalize();
+    this.supervisor.checkPelletIntersection(this.position);
 
     // Update mesh position
     this.mesh.position.copy(this.position);
-    /*
     const projected = this.vertices4D.map(v => this.projectPerspective4Dto3D(v));
     const positions = projected.map(v => v.toArray()).flat();
     const geometry = this.wireframe.geometry as Three.BufferGeometry;
@@ -212,7 +220,6 @@ export class Player implements RenderableObject {
       Player.rotate4D(v, ['y', 'z'], 0.008);
       Player.rotate4D(v, ['x', 'z'], 0.005);
     }
-    */
   }
   getMesh(): Three.Object3D {
     return this.mesh;

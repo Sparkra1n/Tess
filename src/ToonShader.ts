@@ -1,3 +1,14 @@
+/**
+ * @file ToonShader.ts
+ * @brief Contains the Ramp shader class and Toon material generator
+ * @author Thomas Z.
+ * Date: 2025/05/16
+ * wrote the ramp shader - Thomas
+ * 
+ * 2025/05/18
+ * Converted shader calculations from view space to world space - Thomas
+ */
+
 import * as Three from 'three';
 
 export class Ramp
@@ -24,10 +35,10 @@ export class Ramp
 
     // Calculate cumulative fractions
     const cumulativeFractions = [];
-    let cum = 0;
+    let c = 0;
     for (const f of fractions) {
-      cum += f;
-      cumulativeFractions.push(cum);
+      c += f;
+      cumulativeFractions.push(c);
     }
 
     // Ensure cumulative fractions are correct
@@ -47,13 +58,13 @@ export class Ramp
       }
       const color = colors[segment];
       // Apply inverse gamma correction 
-      // because i don't understand what on earth is going with the color space in 3js...
+      // because i don't understand what on earth is going with the color space
       // Otherwise we get whack colors that aren't what we set
       const adjustedR = Math.pow(color.r, 1.0 / 2.2);
       const adjustedG = Math.pow(color.g, 1.0 / 2.2);
       const adjustedB = Math.pow(color.b, 1.0 / 2.2);
 
-      // Pretend we're doing cool pointer arithmetic in C
+      // Pretend we're doing cool pointer arithmetic
       data[i * 4] = Math.floor(adjustedR * 255);
       data[i * 4 + 1] = Math.floor(adjustedG * 255);
       data[i * 4 + 2] = Math.floor(adjustedB * 255);

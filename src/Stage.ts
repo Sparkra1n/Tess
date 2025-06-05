@@ -1,3 +1,10 @@
+/**
+ * @file Stage.ts
+ * @brief Contains the scene manager and star background.
+ * @author Thomas Z.
+ * Date: 2025/05/08
+ */
+
 import * as Three from 'three';
 import { RenderableObject } from './Types';
 import { GameContext } from "./GameContext.ts"
@@ -45,8 +52,7 @@ export class Stage {
 
   private computeWorldSpaceLights<T extends Three.Light>(
     lights: T[],
-    maxLights: number,
-    normalize: boolean
+    maxLights: number
   ): { vectors: Three.Vector3[], colors: Three.Color[], numLights: number } {
     const numLights = Math.min(lights.length, maxLights);
     const vectors = new Array<Three.Vector3>(maxLights).fill(new Three.Vector3(0, 0, 0));
@@ -68,8 +74,8 @@ export class Stage {
     const directionalLights = this.scene.children.filter(child => child instanceof Three.DirectionalLight) as Three.DirectionalLight[];
     const ambientLights = this.scene.children.filter(child => child instanceof Three.AmbientLight) as Three.AmbientLight[];
   
-    const pointLightData = this.computeWorldSpaceLights(pointLights, maxLights, false);
-    const directionalLightData = this.computeWorldSpaceLights(directionalLights, maxLights, true); // True for normalization if directional lights are added
+    const pointLightData = this.computeWorldSpaceLights(pointLights, maxLights);
+    const directionalLightData = this.computeWorldSpaceLights(directionalLights, maxLights);
   
     let ambientColor = new Three.Color(0, 0, 0);
     let ambientIntensity = 0.0;
@@ -133,7 +139,7 @@ export class Stage {
       }
       this.camera.position.copy(this.cameraTarget.getPosition()).add(new Three.Vector3(0, 3, 0));
       this.camera.rotation.set(this.cameraPitch, this.cameraTarget.getRotation().y, 0);
-    } 
+    }
     
     else if (this.cameraMode === 'third-person') {
       const targetPosition = this.cameraTarget.getMesh().position;
@@ -168,7 +174,6 @@ export class Stage {
     this.renderer.render(this.scene, this.camera);
   }
 
-  //TODO: take out of stage
   addSpaceSkydome() {
     const radius = 500;
     const numStars = 200;

@@ -1,11 +1,44 @@
+/**
+ * @file Maze.ts
+ * @brief Contains the maze mesh generator
+ * @author Thomas Z.
+ * Date: 2025/04/17
+ * 
+ * Revision History:
+ * 
+ * 2025/04/17
+ * Wrote wireframe maze generation with hunt and kill algo - Thomas
+ * 
+ * 2025/05/14
+ * Introduce wall thickness--very much broken in design - Thomas
+ * 
+ * 2025/05/16
+ * Corrected to properly generate thin walls in 3D
+ * Referenced maze generation program in C on github reference - Thomas
+ * 
+ * 2025/05/18
+ * Corrected UV scaling issues for grunge textures - Thomas
+ * 
+ * 2025/05/23
+ * Add box colliders to all maze segments - Thomas
+ * 
+ * 2025/05/25
+ * Introduced 2D maze segment lookup system for fast collision detection - Thomas
+ * 
+ * 2025/06/05
+ * Add Pacman-style pellets and lookup system for fast collection - Thomas
+ * 
+ * 2025/06/06
+ * Complete pellet removal - Thomas
+ */
+
 import * as Three from 'three';
 import { Direction, dx, dy as dz, opposite } from "./Directions.ts";
-import { StaticMesh } from "./Types.ts";
+import { RenderableObject } from "./Types.ts";
 import { Ramp, createToonShader } from "./ToonShader.ts"
 
 export type Grid = number[][];
 
-//TODO: replace with provided tuple in 3js
 export class Point2 {
   constructor(public x: number, public z: number) {}
 }
@@ -18,25 +51,33 @@ export class WallSegment {
   }
 }
 
-export class Maze extends StaticMesh {
+export class Maze extends RenderableObject {
   private width: number;
   private height: number;
   private cellSize: number;
   private wallHeight: number;
   private wallSegments: WallSegment[] = [];
   private wallBoxes: Three.Box3[] = []; // Array to store wall colliders
-  private wallLists: Three.Box3[][][] = []; // 2D array for spatial lookup
+  private wallLists: Three.Box3[][][] = []; // Wall spatial lookup
   private grid: Grid;
+  private pelletGroup: Three.Group;
+  private pelletLists: Three.Mesh[][][];
 
   constructor(width: number, height: number, cellSize: number, wallHeight: number) {
-    const group = new Three.Group();
-    super(group);
+    super(new Three.Group);
     this.width = width;
     this.height = height;
     this.cellSize = cellSize;
     this.wallHeight = wallHeight;
     this.grid = Array.from(Array(height), _ => Array(width).fill(0));
+    this.pelletGroup = new Three.Group();
+    this.mesh.add(this.pelletGroup);
+    this.pelletLists = Array.from(Array(this.height), _ => Array.from(Array(this.width), _ => []));
     this.generateMazeMesh();
+  }
+
+  getPelletGroup() : Three.Group {
+    return this.pelletGroup;
   }
 
   private carvePassagesFrom(x: number, z: number): void {
@@ -193,7 +234,7 @@ export class Maze extends StaticMesh {
     this.populateWallLists();
   }
 
-  adjustBoxUVs( geometry: Three.BoxGeometry, width: number, height: number, depth: number, uvScale: number): void {
+  adjustBoxUVs(geometry: Three.BoxGeometry, width: number, height: number, depth: number, uvScale: number): void {
     const uvAttribute = geometry.attributes.uv;
     const uvsPerFace: Three.Vector2[][] = [];
 
@@ -224,31 +265,40 @@ export class Maze extends StaticMesh {
       const segment = this.wallSegments[idx];
       const wallBox = this.wallBoxes[idx];
 
-      if (segment.p1.x === segment.p2.x) { // Vertical wall
+      // East-West wall
+      if (segment.p1.x === segment.p2.x) {
         const i = segment.p1.x;
-        const j1 = Math.min(segment.p1.z, segment.p2.z);
-        const j2 = Math.max(segment.p1.z, segment.p2.z);
+        const start = Math.min(segment.p1.z, segment.p2.z);
+        const end = Math.max(segment.p1.z, segment.p2.z);
 
         // Limit to the wall height (y)
-        for (let k = j1; k < j2; k++) {
+        for (let k = start; k < end; k++) {
           if (i > 0 && k >= 0 && k < this.height) {
-            this.wallLists[k][i - 1].push(wallBox); // East wall for cell (i-1, k)
+            // East wall for cell (i-1, k)
+            this.wallLists[k][i - 1].push(wallBox);
           }
           if (i < this.width && k >= 0 && k < this.height) {
-            this.wallLists[k][i].push(wallBox); // West wall for cell (i, k)
+            // West wall for cell (i, k)
+            this.wallLists[k][i].push(wallBox);
           }
         }
-      } else if (segment.p1.z === segment.p2.z) { // Horizontal wall
+      } 
+      
+      // North-South wall
+      else if (segment.p1.z === segment.p2.z) {
         const j = segment.p1.z;
-        const i1 = Math.min(segment.p1.x, segment.p2.x);
-        const i2 = Math.max(segment.p1.x, segment.p2.x);
+        const start = Math.min(segment.p1.x, segment.p2.x);
+        const end = Math.max(segment.p1.x, segment.p2.x);
 
-        for (let k = i1; k < i2; k++) {
+        // Limit to the wall height (y)
+        for (let k = start; k < end; k++) {
           if (j > 0 && k >= 0 && k < this.width) {
-            this.wallLists[j - 1][k].push(wallBox); // South wall for cell (k, j-1)
+            // South wall for cell (k, j-1)
+            this.wallLists[j - 1][k].push(wallBox);
           }
           if (j < this.height && k >= 0 && k < this.width) {
-            this.wallLists[j][k].push(wallBox); // North wall for cell (k, j)
+            // North wall for cell (k, j)
+            this.wallLists[j][k].push(wallBox);
           }
         }
       }
@@ -281,5 +331,74 @@ export class Maze extends StaticMesh {
     }
 
     return wallSet;
+  }
+
+  public spawnPellets(): void {
+    while (this.pelletGroup.children.length > 0)
+      this.pelletGroup.remove(this.pelletGroup.children[0]);
+
+    for (const row of this.pelletLists) {
+      for (const cell of row) {
+        cell.length = 0;
+      }
+    }
+
+    const pelletRadius = 0.05 * this.cellSize;
+    const pelletGeometry = new Three.SphereGeometry(pelletRadius, 8, 8);
+    const pelletMaterial = new Three.MeshBasicMaterial({ color: 0xffff00 });
+
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        const x = (i + 0.5) * this.cellSize;
+        const z = (j + 0.5) * this.cellSize;
+        const pos = new Three.Vector3(x, 0, z);
+        const gridX = i; // Since x = (i + 0.5) * cellSize, gridX = i
+        const gridZ = j;
+        const pelletMesh = new Three.Mesh(pelletGeometry, pelletMaterial);
+        pelletMesh.position.copy(pos);
+        // Store sphere collider in userData
+        const sphere = new Three.Sphere(pos.clone(), pelletRadius);
+        pelletMesh.userData.sphere = sphere;
+        this.pelletGroup.add(pelletMesh);
+        this.pelletLists[gridZ][gridX].push(pelletMesh);
+      }
+    }
+  }
+
+  public getNearbyPellets(playerPos: Three.Vector3, playerSize: number = this.cellSize): 
+    { sphere: Three.Sphere; mesh: Three.Mesh }[] {
+    const halfSize = playerSize / 2;
+    const minX = playerPos.x - halfSize;
+    const maxX = playerPos.x + halfSize;
+    const minZ = playerPos.z - halfSize;
+    const maxZ = playerPos.z + halfSize;
+
+    const minGridX = Math.max(0, Math.floor(minX / this.cellSize));
+    const maxGridX = Math.min(this.width - 1, Math.floor(maxX / this.cellSize));
+    const minGridZ = Math.max(0, Math.floor(minZ / this.cellSize));
+    const maxGridZ = Math.min(this.height - 1, Math.floor(maxZ / this.cellSize));
+
+    const pelletColliders: { sphere: Three.Sphere; mesh: Three.Mesh }[] = [];
+    for (let gridZ = minGridZ; gridZ <= maxGridZ; gridZ++) {
+      for (let gridX = minGridX; gridX <= maxGridX; gridX++) {
+        const pellets = this.pelletLists[gridZ][gridX];
+        for (const pellet of pellets) {
+          const sphere = pellet.userData.sphere;
+          if (sphere) {
+            pelletColliders.push({ sphere, mesh: pellet });
+          }
+        }
+      }
+    }
+    return pelletColliders;
+  }
+
+  public removePellet(mesh: Three.Mesh): void {
+    this.pelletGroup.remove(mesh);
+    const gridX = Math.floor(mesh.position.x / this.cellSize);
+    const gridZ = Math.floor(mesh.position.z / this.cellSize);
+    const cellPellets = this.pelletLists[gridZ][gridX];
+    const index = cellPellets.indexOf(mesh);
+    if (index !== -1) cellPellets.splice(index, 1);
   }
 }
