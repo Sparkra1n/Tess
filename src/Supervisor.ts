@@ -14,12 +14,12 @@ import { createToonShader, Ramp } from "./ToonShader";
 
 export class Supervisor implements ICollisionHandler
 {
-  private player = new Player(3, this);
+  private player = new Player(2, this);
   private stage = new Stage();
   private input = new Set<string>();
   private mouse = { x: 0, y: 0, dx: 0, dy: 0 };
   private maze: Maze = new Maze(50, 50, 5, 2);
-  private pelletsEaten: number = 0;
+  private score: number = 0;
 
   constructor()
   {
@@ -41,7 +41,7 @@ export class Supervisor implements ICollisionHandler
     this.maze.spawnPellets();
     this.stage.addObject(this.maze);
     this.stage.addObject(this.player);
-    this.player.setPosition(3, 100, 3);
+    this.player.setPosition(3, 1, 3);
     
     const lines = new Three.TextureLoader().load('lines.png');
     lines.wrapS = Three.RepeatWrapping;
@@ -153,10 +153,10 @@ export class Supervisor implements ICollisionHandler
     for (const {sphere, mesh} of pellets) {
       if (playerBox.intersectsSphere(sphere)) {
         this.maze.removePellet(mesh);
-        ++this.pelletsEaten;
+        this.score += 10;
         const pelletCounterElement = document.getElementById('pelletCounter');
         if (pelletCounterElement)
-          pelletCounterElement.textContent = `Pellets: ${this.pelletsEaten}`;
+          pelletCounterElement.textContent = `Score: ${this.score}`;
       }
     }
   }
@@ -170,7 +170,8 @@ export class Supervisor implements ICollisionHandler
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
-        mouse: this.mouse
+        mouse: this.mouse,
+        playerPosition: this.player.getPosition()
       });
       this.mouse.dx = 0;
       this.mouse.dy = 0;
