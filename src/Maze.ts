@@ -43,11 +43,11 @@ import { Ramp, createToonShader } from "./ToonShader.ts"
 export type Grid = number[][];
 
 export class Point2 {
-  constructor(public x: number, public z: number) {}
+  constructor(public x: number, public z: number) { }
 }
 
 export class WallSegment {
-  constructor(public p1: Point2, public p2: Point2) {}
+  constructor(public p1: Point2, public p2: Point2) { }
 
   static fromCoords(x1: number, z1: number, x2: number, z2: number): WallSegment {
     return new WallSegment(new Point2(x1, z1), new Point2(x2, z2));
@@ -79,19 +79,19 @@ export class Maze extends RenderableObject {
     this.generateMazeMesh();
   }
 
-  getCellSize() : number {
+  getCellSize(): number {
     return this.cellSize;
   }
 
-  getWidth() : number {
+  getWidth(): number {
     return this.width;
   }
 
-  getDepth() : number {
+  getDepth(): number {
     return this.height;
   }
 
-  getPelletGroup() : Three.Group {
+  getPelletGroup(): Three.Group {
     return this.pelletGroup;
   }
 
@@ -168,70 +168,41 @@ export class Maze extends RenderableObject {
     this.generateMaze();
     this.createWallSegments();
 
-    // const ramp = new Ramp(
-    //   new Three.Color(0x273214),
-    //   new Three.Color(0x586C15),
-    //   new Three.Color(0x7E9223),
-    //   new Three.Color(0xADC040)
-    // );
+    const ramp = new Ramp(
+      new Three.Color(0x00235D),
+      new Three.Color(0x006D91),
+      new Three.Color(0x00B1C3),
+      new Three.Color(0x01BAD6)
+    );
 
-    const material = new Three.MeshPhongMaterial({ 
-      color: 0x0000FF, 
-      shininess: 100,
-      emissive: new Three.Color(0x0000FF),
-      emissiveIntensity: 0.8 
-    });
+    const material = createToonShader(ramp);
 
     const wallThickness = this.cellSize * 0.1;
     const group = this.getMesh() as Three.Group;
     const uvScale = 1.0 / this.cellSize;
-  
+
     for (const segment of this.wallSegments) {
       const p1 = segment.p1;
       const p2 = segment.p2;
-  
+
       let geometry: Three.BoxGeometry;
       let position: Three.Vector3;
-  
+
       // Vertical wall
       if (p1.x === p2.x) {
         const x = p1.x * this.cellSize;
         const z1 = Math.min(p1.z, p2.z) * this.cellSize;
         const z2 = Math.max(p1.z, p2.z) * this.cellSize;
-  
+
         const xMin = x - wallThickness / 2;
         const xMax = x + wallThickness / 2;
         const zMin = z1 - wallThickness / 2;
         const zMax = z2 + wallThickness / 2;
-  
+
         const width = xMax - xMin;
         const height = this.wallHeight;
         const depth = zMax - zMin;
-  
-        geometry = new Three.BoxGeometry(width, height, depth);
-        position = new Three.Vector3(
-          (xMin + xMax) / 2,
-          this.wallHeight / 2,
-          (zMin + zMax) / 2
-        );
-        this.adjustBoxUVs(geometry, width, height, depth, uvScale);
-      } 
-      
-      // Horizontal wall
-      else {
-        const z = p1.z * this.cellSize;
-        const x1 = Math.min(p1.x, p2.x) * this.cellSize;
-        const x2 = Math.max(p1.x, p2.x) * this.cellSize;
-  
-        const zMin = z - wallThickness / 2;
-        const zMax = z + wallThickness / 2;
-        const xMin = x1 - wallThickness / 2;
-        const xMax = x2 + wallThickness / 2;
-  
-        const width = xMax - xMin;
-        const height = this.wallHeight;
-        const depth = zMax - zMin;
-  
+
         geometry = new Three.BoxGeometry(width, height, depth);
         position = new Three.Vector3(
           (xMin + xMax) / 2,
@@ -240,7 +211,31 @@ export class Maze extends RenderableObject {
         );
         this.adjustBoxUVs(geometry, width, height, depth, uvScale);
       }
-  
+
+      // Horizontal wall
+      else {
+        const z = p1.z * this.cellSize;
+        const x1 = Math.min(p1.x, p2.x) * this.cellSize;
+        const x2 = Math.max(p1.x, p2.x) * this.cellSize;
+
+        const zMin = z - wallThickness / 2;
+        const zMax = z + wallThickness / 2;
+        const xMin = x1 - wallThickness / 2;
+        const xMax = x2 + wallThickness / 2;
+
+        const width = xMax - xMin;
+        const height = this.wallHeight;
+        const depth = zMax - zMin;
+
+        geometry = new Three.BoxGeometry(width, height, depth);
+        position = new Three.Vector3(
+          (xMin + xMax) / 2,
+          this.wallHeight / 2,
+          (zMin + zMax) / 2
+        );
+        this.adjustBoxUVs(geometry, width, height, depth, uvScale);
+      }
+
       geometry.computeVertexNormals();
       const wallMesh = new Three.Mesh(geometry, material);
       wallMesh.position.set(position.x, position.y, position.z);
@@ -261,10 +256,10 @@ export class Maze extends RenderableObject {
 
     for (let i = 0; i < 6; ++i) {
       uvsPerFace.push([
-      new Three.Vector2(0, 0),
-      new Three.Vector2(width * uvScale, 0),
-      new Three.Vector2(0, height * uvScale),
-      new Three.Vector2(width * uvScale, height * uvScale)
+        new Three.Vector2(0, 0),
+        new Three.Vector2(width * uvScale, 0),
+        new Three.Vector2(0, height * uvScale),
+        new Three.Vector2(width * uvScale, height * uvScale)
       ]);
     }
 
@@ -303,8 +298,8 @@ export class Maze extends RenderableObject {
             this.wallLists[k][i].push(wallBox);
           }
         }
-      } 
-      
+      }
+
       // North-South wall
       else if (segment.p1.z === segment.p2.z) {
         const j = segment.p1.z;
@@ -386,8 +381,7 @@ export class Maze extends RenderableObject {
     }
   }
 
-  public getNearbyPellets(playerPos: Three.Vector3, playerSize: number = this.cellSize): 
-    { sphere: Three.Sphere; mesh: Three.Mesh }[] {
+  public getNearbyPellets(playerPos: Three.Vector3, playerSize: number = this.cellSize): { sphere: Three.Sphere; mesh: Three.Mesh }[] {
     const halfSize = playerSize / 2;
     const minX = playerPos.x - halfSize;
     const maxX = playerPos.x + halfSize;
@@ -423,7 +417,7 @@ export class Maze extends RenderableObject {
     if (index !== -1) cellPellets.splice(index, 1);
   }
 
-   public getAvailableDirections(x: number, z: number): Direction[] {
+  public getAvailableDirections(x: number, z: number): Direction[] {
     const directions: Direction[] = [];
     if (this.grid[z][x] & Direction.North) directions.push(Direction.North);
     if (this.grid[z][x] & Direction.South) directions.push(Direction.South);
