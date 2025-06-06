@@ -26,7 +26,7 @@ export class Player extends RenderableObject {
   private direction = new Three.Vector3(0, 0, 1);
   private rotation = new Three.Vector3(0, 0, 0);
   private speed = 0.2;
-  private jumpSpeed = 0.2;
+  private jumpSpeed = 0.15;
   private gravity = -0.01;
   private size: number;
   private supervisor: Supervisor;
@@ -158,7 +158,7 @@ export class Player extends RenderableObject {
 
     // Handle vertical movement
     const potentialVerticalPosition = this.position.clone();
-    if (context.input.has(' ')) {
+    if (context.input.has(' ') && this.velocity.y === 0) {
       this.velocity.y = this.jumpSpeed;
     }
     this.velocity.y += this.gravity;

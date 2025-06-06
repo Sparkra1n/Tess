@@ -27,4 +27,5 @@ export interface GameContext {
     dx: number;
     dy: number;
   };
+  canEatGhosts: boolean;
 }

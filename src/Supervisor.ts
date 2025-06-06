@@ -8,9 +8,10 @@
 import * as Three from "three";
 import { Player } from './Player';
 import { Stage } from './Stage';
-import { Maze, Point2 } from './Maze';
+import { Maze } from './Maze';
 import { ICollision, ICollisionHandler } from "./Types";
 import { MazeRunner } from "./MazeRunner";
+import { Timer } from "./Timer";
 
 export class Supervisor implements ICollisionHandler {
   private player = new Player(2, this);
@@ -20,8 +21,10 @@ export class Supervisor implements ICollisionHandler {
   private mazeWidth: number = 20;
   private mazeHeight: number = 20;
   private cellSize: number = 5;
-  private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 2.5);
+  private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 3);
   private score: number = 0;
+  private timer: Timer;
+  private canEatGhosts: boolean;
 
   constructor() {
     window.addEventListener('mousemove', (e) => {
@@ -43,18 +46,40 @@ export class Supervisor implements ICollisionHandler {
     this.stage.addObject(this.maze);
     this.stage.addObject(this.player);
 
-    // Find a safe spawn position
     this.player.setPosition(
       this.mazeWidth * this.cellSize / 2 + this.cellSize / 2,
       1,
       this.mazeHeight * this.cellSize / 2 + this.cellSize / 2
     );
 
-    const ghost1 = new MazeRunner(this.maze, 5, 1.5, this.player);
-    ghost1.setPosition(0, 1, 0);
+    // Spawn 5 ghosts
+    const playerPosition = this.player.getPosition();
+    let ghostCount = 0;
+    while (ghostCount < 5) {
+      const randX = Math.random() * (this.mazeWidth - 1) * this.cellSize + this.cellSize / 2;
+      const randZ = Math.random() * (this.mazeHeight - 1) * this.cellSize + this.cellSize / 2;
+      if (Math.sqrt(Math.pow(playerPosition.x - randX, 2) + Math.pow(playerPosition.z - randZ, 2)) < 5 * this.cellSize)
+        continue;
+      const ghost = new MazeRunner(this.maze, 5, 1.5, this.player);
+      ghost.setPosition(randX, 1, randZ);
+      ++ghostCount;
+      this.stage.addObject(ghost);
+    }
 
-    this.stage.addObject(ghost1);
     this.stage.setCameraFollow(this.player);
+
+    this.timer = new Timer();
+    this.canEatGhosts = false;
+
+    // Set up the repeating 15-second timer
+    this.timer.addTimer(10, () => {
+      this.canEatGhosts = true;
+      // Add a one-shot 5-second timer to disable ghost-eating
+      this.timer.addTimer(5, () => {
+        this.canEatGhosts = false;
+      }, false);
+    }, true);
+
     this.run();
   }
 
@@ -134,10 +159,12 @@ export class Supervisor implements ICollisionHandler {
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
-        mouse: this.mouse
+        mouse: this.mouse,
+        canEatGhosts: this.canEatGhosts
       });
       this.mouse.dy = 0;
       this.mouse.dx = 0;
+      this.timer.update(deltaTime);
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);

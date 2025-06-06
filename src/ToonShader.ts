@@ -71,9 +71,7 @@ export class Ramp {
     }
     this.texture = new Three.DataTexture(data, width, 1, Three.RGBAFormat);
 
-    // ????
-    // Ok so apparently even though eslint gives an error here saying this is not a field, it is!
-    // Ok just tell it to shut up because for some reason this correctly sets the color space
+    // Ok so apparently even though eslint gives an error here saying this is not a field, it is
     this.texture.encoding = Three.sRGBEncoding;
     this.texture.minFilter = Three.NearestFilter;
     this.texture.magFilter = Three.NearestFilter;

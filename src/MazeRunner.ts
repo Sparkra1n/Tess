@@ -1,7 +1,23 @@
+/**
+ * @file MazeRunner.ts
+ * @brief Contains the ghost enemy pathfinding logic
+ * @author Thomas Z.
+ * Date: 2025/06/05
+ * 
+ * Revision History:
+ * 2025/06/05
+ * Wrote it - Thomas
+ * 
+ * 2025/06/06 
+ * Added debug trails - Thomas
+ * Removed debug trails - Thomas
+ */
+
 import * as Three from "three";
 import { RenderableObject } from "./Types";
 import { Maze, Point2 } from "./Maze";
 import { GameContext } from "./GameContext";
+import { Ramp, createToonShader } from "./ToonShader";
 
 class AStarNode {
   constructor(
@@ -12,14 +28,17 @@ class AStarNode {
   ) {}
 }
 
-export class MazeRunner extends RenderableObject {
+export class MazeRunner extends RenderableObject<Three.Mesh> {
   private maze: Maze;
   private speed: number;
   private size: number;
   private target: RenderableObject | null;
   private path: Point2[] = [];
   private currentTargetIndex: number = 0;
-  
+  private static normalMaterial: Three.ShaderMaterial;
+  private static canBeEatenMaterial: Three.ShaderMaterial;
+
+
   constructor(maze: Maze, speed: number, size: number, target: RenderableObject | null = null) {
     super(new Three.Mesh());
     this.maze = maze;
@@ -27,16 +46,26 @@ export class MazeRunner extends RenderableObject {
     this.size = size;
     this.target = target;
 
-    const material = new Three.MeshPhongMaterial({
-      color: 0x00FF00,
-      shininess: 100,
-      emissive: new Three.Color(0x00FF00),
-      emissiveIntensity: 0.8
-    });
+    let ramp = new Ramp(
+      new Three.Color(0xFD8902),
+      new Three.Color(0xFFC501),
+      new Three.Color(0xFFED5B),
+      new Three.Color(0xFEFE7C)
+    );
+
+    MazeRunner.normalMaterial = createToonShader(ramp);
+
+    ramp = new Ramp(
+      new Three.Color(0x586B1B),
+      new Three.Color(0xABBE42),
+      new Three.Color(0xABBE42),
+      new Three.Color(0xABBE42)
+    );
+    MazeRunner.canBeEatenMaterial = createToonShader(ramp);
 
     this.mesh = new Three.Mesh(
       new Three.SphereGeometry(this.size, 24, 24),
-      material
+      MazeRunner.normalMaterial
     );
   }
 
@@ -96,6 +125,12 @@ export class MazeRunner extends RenderableObject {
 
   update(context: GameContext) {
     if (!this.target) return;
+
+    // errors
+    if (context.canEatGhosts)
+      this.mesh.material = MazeRunner.canBeEatenMaterial;
+    else
+      this.mesh.material = MazeRunner.normalMaterial;
 
     const currentPos = this.getPosition();
     const targetPos = this.target.getPosition();

@@ -1,3 +1,15 @@
+/**
+ * @file Directions.ts
+ * @brief Contains the game direction conventions
+ * @author Thomas Z.
+ * Date: 2025/04/17
+ * 
+ * Revision History:
+ * 
+ * 2025/06/06
+ * Rename dy to dz and update sign convention to agree with A-star algo - Thomas
+ */
+
 export enum Direction {
   North = 1,
   South = 2,
