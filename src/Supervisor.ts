@@ -31,6 +31,7 @@ export class Supervisor implements ICollisionHandler {
   private pickupSound = new Audio('public/pick_up.wav');
   private victorySound = new Audio('public/victory.wav');
   private loseSound = new Audio('public/lose.wav');
+  private upgradeSound = new Audio('public/upgrade.wav');
 
   constructor() {
     window.addEventListener('mousemove', (e) => {
@@ -206,6 +207,8 @@ export class Supervisor implements ICollisionHandler {
           this.stage.removeObject(ghost);
           this.ghosts.splice(i, 1);
           this.player.increaseSize(0.15); // Increase size when eating a ghost
+          this.upgradeSound.currentTime = 0;
+          this.upgradeSound.play();
         }
         else {
           this.endGame(GameState.Lost);
