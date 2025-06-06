@@ -164,6 +164,10 @@ export class Supervisor implements ICollisionHandler {
       const ghost = this.ghosts[i];
       if (playerBox.intersectsBox(ghost.getBoundingBox())) {
         if (this.canEatGhosts) {
+          if (this.score >= 500) {
+            this.endGame(GameState.Won);
+            return;
+          }
           this.score += 500;
           console.log("eaten");
           this.stage.removeObject(ghost);
