@@ -199,10 +199,6 @@ export class Supervisor implements ICollisionHandler {
       if (playerBox.intersectsBox(ghost.getBoundingBox())) {
         if (this.canEatGhosts) {
           this.score += 500;
-          if (this.score >= this.scoreToWin) {
-            this.endGame(GameState.Won);
-            return;
-          }
           console.log("eaten");
           this.stage.removeObject(ghost);
           this.ghosts.splice(i, 1);
@@ -223,9 +219,6 @@ export class Supervisor implements ICollisionHandler {
         this.maze.removePellet(mesh);
         this.score += 10;
         this.player.triggerMouthAnimation();
-        if (this.score >= this.scoreToWin) {
-          this.endGame(GameState.Won);
-        }
       }
     }
   }

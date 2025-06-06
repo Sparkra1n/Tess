@@ -39,6 +39,7 @@ import * as Three from 'three';
 import { Direction, dx, dz, opposite } from "./Directions.ts";
 import { RenderableObject } from "./Types.ts";
 import { Ramp, createToonShader } from "./ToonShader.ts"
+import { GameContext } from "./GameContext.ts";
 
 export type Grid = number[][];
 
@@ -359,22 +360,32 @@ export class Maze extends RenderableObject<Three.Group> {
       }
     }
 
-    const pelletRadius = 0.05 * this.cellSize;
-    const pelletGeometry = new Three.SphereGeometry(pelletRadius, 8, 8);
-    const pelletMaterial = new Three.MeshBasicMaterial({ color: 0xffff00 });
+    const pelletRadius = 0.15 * this.cellSize;
+    const pelletGeometry = new Three.CylinderGeometry(pelletRadius, pelletRadius, 0.05 * this.cellSize, 32);
+    const pelletMaterial = new Three.MeshBasicMaterial({
+      color: 0xFFE500,  // Brighter gold color
+      transparent: true,
+      opacity: 0.95     // Slightly more opaque for better visibility
+    });
 
     for (let i = 0; i < this.width; i++) {
       for (let j = 0; j < this.height; j++) {
         const x = (i + 0.5) * this.cellSize;
         const z = (j + 0.5) * this.cellSize;
-        const pos = new Three.Vector3(x, 0, z);
-        const gridX = i; // Since x = (i + 0.5) * cellSize, gridX = i
+        const pos = new Three.Vector3(x, 1, z);
+        const gridX = i;
         const gridZ = j;
         const pelletMesh = new Three.Mesh(pelletGeometry, pelletMaterial);
+        pelletMesh.rotation.x = Math.PI / 2; // Make it face up
         pelletMesh.position.copy(pos);
+        
+        // Add rotation speed to userData
+        pelletMesh.userData.rotationSpeed = 2.0;
+        
         // Store sphere collider in userData
         const sphere = new Three.Sphere(pos.clone(), pelletRadius);
         pelletMesh.userData.sphere = sphere;
+
         this.pelletGroup.add(pelletMesh);
         this.pelletLists[gridZ][gridX].push(pelletMesh);
       }
@@ -435,5 +446,15 @@ export class Maze extends RenderableObject<Three.Group> {
       }
     }
     return neighbors;
+  }
+
+  update(context: GameContext): void {
+    // Update pellet animations
+    this.pelletGroup.children.forEach(pellet => {
+      if (pellet instanceof Three.Mesh) {
+        // Rotate the pellet
+        pellet.rotation.z += context.deltaTime * (pellet.userData.rotationSpeed || 2.0);
+      }
+    });
   }
 }

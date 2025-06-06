@@ -23,14 +23,22 @@ export class Stage {
   private minimapCamera: Three.OrthographicCamera;
 
   constructor() {
-    const pointLight = new Three.PointLight(0xffffff, 1.0, 100);
-    pointLight.position.set(10, 10, 10);
-    this.scene.add(pointLight);
+    // Main directional light
+    const directionalLight = new Three.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(10, 20, 10);
+    this.scene.add(directionalLight);
 
-    // const ambientLight = new Three.AmbientLight(0x404040, 0.3);
-    // this.scene.add(ambientLight);
+    // Secondary point lights for better reflections
+    const pointLight1 = new Three.PointLight(0xffffff, 0.8, 100);
+    pointLight1.position.set(15, 10, 15);
+    this.scene.add(pointLight1);
 
-    const ambient = new Three.AmbientLight(0xffffff, 0.5);
+    const pointLight2 = new Three.PointLight(0xffffff, 0.6, 100);
+    pointLight2.position.set(-15, 10, -15);
+    this.scene.add(pointLight2);
+
+    // Reduced ambient light to make metallic properties more visible
+    const ambient = new Three.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambient);
 
     this.addSpaceSkydome();
