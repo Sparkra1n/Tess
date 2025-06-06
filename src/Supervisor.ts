@@ -11,6 +11,7 @@ import { Stage } from './Stage';
 import { Maze, Point2 } from './Maze';
 import { ICollision, ICollisionHandler } from "./Types";
 import { MazeRunner } from "./MazeRunner";
+import { RenderableObject } from "./RenderableObject";
 
 export class Supervisor implements ICollisionHandler {
   private player = new Player(2, this);
@@ -22,6 +23,11 @@ export class Supervisor implements ICollisionHandler {
   private cellSize: number = 5;
   private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 2.5);
   private score: number = 0;
+  private ghosts: MazeRunner[] = [];
+  private rushHourTimer: number = 0;
+  private rushHourDuration: number = 5; // 5 seconds of rush hour
+  private normalDuration: number = 15; // 15 seconds of normal state
+  private isRushHour: boolean = false;
 
   constructor() {
     window.addEventListener('mousemove', (e) => {
@@ -50,10 +56,35 @@ export class Supervisor implements ICollisionHandler {
       this.mazeHeight * this.cellSize / 2 + this.cellSize / 2
     );
 
-    const ghost1 = new MazeRunner(this.maze, 5, 1.5, this.player);
-    ghost1.setPosition(0, 1, 0);
+    // Create 10 ghosts at random positions
+    for (let i = 0; i < 10; i++) {
+      const ghost = new MazeRunner(this.maze, 5, 1.5, this.player);
+      
+      // Find a random valid position
+      let validPosition = false;
+      let x = 0;
+      let z = 0;
+      
+      while (!validPosition) {
+        // Get random cell coordinates (avoid edges)
+        x = Math.floor(Math.random() * (this.mazeWidth - 2)) + 1;
+        z = Math.floor(Math.random() * (this.mazeHeight - 2)) + 1;
+        
+        // Convert to world coordinates
+        const worldX = x * this.cellSize;
+        const worldZ = z * this.cellSize;
+        
+        // Check if position is valid (not in wall)
+        const testPosition = new Three.Vector3(worldX, 1, worldZ);
+        const collisions = this.willCollide(testPosition);
+        validPosition = collisions.length === 0;
+      }
+      
+      ghost.setPosition(x * this.cellSize, 1, z * this.cellSize);
+      this.ghosts.push(ghost);
+      this.stage.addObject(ghost as unknown as RenderableObject);
+    }
 
-    this.stage.addObject(ghost1);
     this.stage.setCameraFollow(this.player);
     this.run();
   }
@@ -131,10 +162,27 @@ export class Supervisor implements ICollisionHandler {
     const loop = (time: number) => {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
+
+      // Update rush hour timer
+      this.rushHourTimer += deltaTime;
+      const cycleDuration = this.rushHourDuration + this.normalDuration;
+      
+      if (this.rushHourTimer >= cycleDuration) {
+        this.rushHourTimer = 0;
+      }
+      
+      this.isRushHour = this.rushHourTimer < this.rushHourDuration;
+      
+      // Update all ghosts with current rush hour state
+      for (const ghost of this.ghosts) {
+        ghost.setEatableState(this.isRushHour);
+      }
+
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
-        mouse: this.mouse
+        mouse: this.mouse,
+        rushHour: this.isRushHour
       });
       this.mouse.dy = 0;
       this.mouse.dx = 0;
