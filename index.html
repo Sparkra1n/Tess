@@ -17,11 +17,37 @@
           font-size: 24px;
           text-shadow: 1px 1px 2px black;
       }
-  </style>
+      #startScreen, #endScreen {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          background-color: rgba(0, 0, 0, 0.8);
+          color: white;
+      }
+      #gameScreen {
+          position: relative;
+      }
+    </style>
   </head>
   <body>
     <div id="app">
-      <div id="pelletCounter">Score: 0</div>
+      <div id="startScreen">
+        <h1>Pacman</h1>
+        <button id="startButton">Start Game</button>
+      </div>
+      <div id="gameScreen" style="display: none;">
+        <div id="pelletCounter">Score: 0</div>
+      </div>
+      <div id="endScreen" style="display: none;">
+        <h1 id="endMessage"></h1>
+        <button id="restartButton">Restart Game</button>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

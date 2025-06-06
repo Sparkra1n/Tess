@@ -8,6 +8,13 @@
 import * as Three from 'three';
 import { GameContext } from "./GameContext.ts"
 
+export enum GameState {
+  Start,
+  Playing,
+  Won,
+  Lost
+}
+
 export interface ICollision {
   normal: Three.Vector3;
   depth: number;

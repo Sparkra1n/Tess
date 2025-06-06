@@ -9,7 +9,7 @@ import * as Three from "three";
 import { Player } from './Player';
 import { Stage } from './Stage';
 import { Maze } from './Maze';
-import { ICollision, ICollisionHandler } from "./Types";
+import { ICollision, ICollisionHandler, GameState} from "./Types";
 import { MazeRunner } from "./MazeRunner";
 import { Timer } from "./Timer";
 
@@ -26,6 +26,7 @@ export class Supervisor implements ICollisionHandler {
   private timer: Timer;
   private canEatGhosts: boolean;
   private ghosts: MazeRunner[] = [];
+  private state: GameState = GameState.Start;
 
   constructor() {
     window.addEventListener('mousemove', (e) => {
@@ -81,6 +82,26 @@ export class Supervisor implements ICollisionHandler {
         this.canEatGhosts = false;
       }, false);
     }, true);
+
+    const startButton = document.getElementById('startButton');
+    if (startButton) {
+      startButton.addEventListener('click', () => {
+        const startScreen = document.getElementById('startScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        if (startScreen && gameScreen) {
+          startScreen.style.display = 'none';
+          gameScreen.style.display = 'block';
+          this.state = GameState.Playing;
+        }
+      });
+    }
+
+    const restartButton = document.getElementById('restartButton');
+    if (restartButton) {
+      restartButton.addEventListener('click', () => {
+        location.reload();
+      });
+    }
 
     this.run();
   }
@@ -172,21 +193,36 @@ export class Supervisor implements ICollisionHandler {
     }
   }
 
+  private endGame(finalState: GameState.Won | GameState.Lost): void {
+    this.state = finalState;
+    const gameScreen = document.getElementById('gameScreen');
+    const endScreen = document.getElementById('endScreen');
+    const endMessage = document.getElementById('endMessage');
+    if (gameScreen && endScreen && endMessage) {
+      gameScreen.style.display = 'none';
+      endScreen.style.display = 'block';
+      endMessage.textContent = finalState === GameState.Won ? 'You Win!' : 'You Lose!';
+    }
+  }
+
+
   run() {
     let lastTime = performance.now();
 
     const loop = (time: number) => {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
-      this.stage.update({
-        deltaTime: deltaTime,
-        input: this.input,
-        mouse: this.mouse,
-        canEatGhosts: this.canEatGhosts
-      });
-      this.mouse.dy = 0;
-      this.mouse.dx = 0;
-      this.timer.update(deltaTime);
+      if (this.state === GameState.Playing) {
+        this.stage.update({
+          deltaTime: deltaTime,
+          input: this.input,
+          mouse: this.mouse,
+          canEatGhosts: this.canEatGhosts
+        });
+        this.mouse.dy = 0;
+        this.mouse.dx = 0;
+        this.timer.update(deltaTime);
+      }
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
