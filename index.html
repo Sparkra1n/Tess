@@ -17,7 +17,7 @@
           font-size: 24px;
           text-shadow: 1px 1px 2px black;
       }
-      #startScreen, #endScreen {
+      #startScreen, #endScreen, #difficultyScreen {
           position: absolute;
           top: 0;
           left: 0;
@@ -42,6 +42,7 @@
       button {
           font-size: 24px;
           padding: 15px 30px;
+          margin: 10px;
           border-radius: 8px;
           background-color: #4CAF50;
           color: white;
@@ -52,6 +53,18 @@
       button:hover {
           background-color: #45a049;
       }
+      .difficulty-button {
+          width: 200px;
+      }
+      .easy {
+          background-color: #4CAF50;
+      }
+      .medium {
+          background-color: #FFA500;
+      }
+      .impossible {
+          background-color: #FF0000;
+      }
     </style>
   </head>
   <body>
@@ -59,6 +72,12 @@
       <div id="startScreen">
         <h1>Pacman</h1>
         <button id="startButton">Start Game</button>
+      </div>
+      <div id="difficultyScreen" style="display: none;">
+        <h1>Select Difficulty</h1>
+        <button id="easyButton" class="difficulty-button easy">Easy (1000)</button>
+        <button id="mediumButton" class="difficulty-button medium">Medium (3000)</button>
+        <button id="impossibleButton" class="difficulty-button impossible">Impossible (10000)</button>
       </div>
       <div id="gameScreen" style="display: none;">
         <div id="pelletCounter">Score: 0</div>

@@ -27,7 +27,8 @@ export class Supervisor implements ICollisionHandler {
   private canEatGhosts: boolean;
   private ghosts: MazeRunner[] = [];
   private state: GameState = GameState.Start;
-  private scoreToWin: number = 5000;
+  private scoreToWin: number = 1000; // Default to easy
+
   constructor() {
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.clientX;
@@ -87,12 +88,35 @@ export class Supervisor implements ICollisionHandler {
     if (startButton) {
       startButton.addEventListener('click', () => {
         const startScreen = document.getElementById('startScreen');
-        const gameScreen = document.getElementById('gameScreen');
-        if (startScreen && gameScreen) {
+        const difficultyScreen = document.getElementById('difficultyScreen');
+        if (startScreen && difficultyScreen) {
           startScreen.style.display = 'none';
-          gameScreen.style.display = 'block';
-          this.state = GameState.Playing;
+          difficultyScreen.style.display = 'flex';
         }
+      });
+    }
+
+    const easyButton = document.getElementById('easyButton');
+    if (easyButton) {
+      easyButton.addEventListener('click', () => {
+        this.scoreToWin = 1000;
+        this.startGame();
+      });
+    }
+
+    const mediumButton = document.getElementById('mediumButton');
+    if (mediumButton) {
+      mediumButton.addEventListener('click', () => {
+        this.scoreToWin = 3000;
+        this.startGame();
+      });
+    }
+
+    const impossibleButton = document.getElementById('impossibleButton');
+    if (impossibleButton) {
+      impossibleButton.addEventListener('click', () => {
+        this.scoreToWin = 10000;
+        this.startGame();
       });
     }
 
@@ -104,6 +128,16 @@ export class Supervisor implements ICollisionHandler {
     }
 
     this.run();
+  }
+
+  private startGame() {
+    const difficultyScreen = document.getElementById('difficultyScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    if (difficultyScreen && gameScreen) {
+      difficultyScreen.style.display = 'none';
+      gameScreen.style.display = 'block';
+      this.state = GameState.Playing;
+    }
   }
 
   /**
@@ -189,6 +223,9 @@ export class Supervisor implements ICollisionHandler {
         this.maze.removePellet(mesh);
         this.score += 10;
         this.player.triggerMouthAnimation();
+        if (this.score >= this.scoreToWin) {
+          this.endGame(GameState.Won);
+        }
       }
     }
   }
