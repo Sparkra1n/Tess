@@ -185,9 +185,6 @@ export class Supervisor implements ICollisionHandler {
         this.maze.removePellet(mesh);
         this.score += 10;
         this.player.triggerMouthAnimation();
-        if (this.score >= 1000) {
-          this.endGame(GameState.Won);
-        }
       }
     }
   }
@@ -224,6 +221,9 @@ export class Supervisor implements ICollisionHandler {
         const pelletCounterElement = document.getElementById('pelletCounter');
         if (pelletCounterElement)
           pelletCounterElement.textContent = `Score: ${this.score}`;
+        if (this.score >= 1000) {
+          this.endGame(GameState.Won);
+        }
       }
       requestAnimationFrame(loop);
     };
