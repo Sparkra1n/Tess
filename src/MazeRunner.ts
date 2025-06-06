@@ -26,7 +26,7 @@ class AStarNode {
     public parent: AStarNode | null,
     public g: number,
     public f: number
-  ) {}
+  ) { }
 }
 
 export class MazeRunner extends RenderableObject<Three.Mesh> {
@@ -47,16 +47,11 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
     this.size = size;
     this.target = target;
 
-    const lines = new Three.TextureLoader().load('lines.png');
-    lines.wrapS = Three.RepeatWrapping;
-    lines.wrapT = Three.RepeatWrapping;
-
     const ramp1 = new Ramp(
       new Three.Color(0xFD8902),
       new Three.Color(0xFFC501),
       new Three.Color(0xFFED5B),
       new Three.Color(0xFEFE7C),
-      [25, 25, 25, 25]
     );
 
     MazeRunner.normalMaterial = createToonShader(ramp1);

@@ -361,12 +361,18 @@ export class Maze extends RenderableObject<Three.Group> {
     }
 
     const pelletRadius = 0.15 * this.cellSize;
-    const pelletGeometry = new Three.CylinderGeometry(pelletRadius, pelletRadius, 0.05 * this.cellSize, 32);
-    const pelletMaterial = new Three.MeshBasicMaterial({
-      color: 0xFFE500,  // Brighter gold color
-      transparent: true,
-      opacity: 0.95     // Slightly more opaque for better visibility
-    });
+    const pelletGeometry = new Three.CylinderGeometry(pelletRadius, pelletRadius, 0.05 * this.cellSize, 24,
+      24);
+
+    const ramp = new Ramp(
+      new Three.Color(0x6E4100),
+      new Three.Color(0xA06100),
+      new Three.Color(0xFCA300),
+      new Three.Color(0xFFE500)
+    );
+
+
+    const pelletMaterial = createToonShader(ramp);
 
     for (let i = 0; i < this.width; i++) {
       for (let j = 0; j < this.height; j++) {
@@ -378,10 +384,10 @@ export class Maze extends RenderableObject<Three.Group> {
         const pelletMesh = new Three.Mesh(pelletGeometry, pelletMaterial);
         pelletMesh.rotation.x = Math.PI / 2; // Make it face up
         pelletMesh.position.copy(pos);
-        
+
         // Add rotation speed to userData
         pelletMesh.userData.rotationSpeed = 2.0;
-        
+
         // Store sphere collider in userData
         const sphere = new Three.Sphere(pos.clone(), pelletRadius);
         pelletMesh.userData.sphere = sphere;
