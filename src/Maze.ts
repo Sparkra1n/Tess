@@ -76,6 +76,18 @@ export class Maze extends RenderableObject {
     this.generateMazeMesh();
   }
 
+  getCellSize() : number {
+    return this.cellSize;
+  }
+
+  getWidth() : number {
+    return this.width;
+  }
+
+  getDepth() : number {
+    return this.height;
+  }
+
   getPelletGroup() : Three.Group {
     return this.pelletGroup;
   }

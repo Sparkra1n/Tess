@@ -41,7 +41,10 @@ export class Supervisor implements ICollisionHandler
     this.maze.spawnPellets();
     this.stage.addObject(this.maze);
     this.stage.addObject(this.player);
-    this.player.setPosition(3, 1, 3);
+    
+    // Find a safe spawn position
+    const safePosition = this.findSafeSpawnPosition();
+    this.player.setPosition(safePosition.x, safePosition.y, safePosition.z);
     
     const lines = new Three.TextureLoader().load('lines.png');
     lines.wrapS = Three.RepeatWrapping;
@@ -179,5 +182,44 @@ export class Supervisor implements ICollisionHandler
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
+  }
+
+  private findSafeSpawnPosition(): Three.Vector3 {
+    // Start from the center of the maze
+    const centerX = this.maze.getWidth() * this.maze.getCellSize() / 2;
+    const centerZ = this.maze.getDepth() * this.maze.getCellSize() / 2;
+    const spawnHeight = 1; // Keep the same height as before
+    
+    // Try positions in a spiral pattern until we find a safe spot
+    const maxAttempts = 100;
+    const stepSize = this.maze.getCellSize();
+    let attempts = 0;
+    let radius = 0;
+    let angle = 0;
+    
+    while (attempts < maxAttempts) {
+      // Calculate position in spiral pattern
+      const x = centerX + radius * Math.cos(angle);
+      const z = centerZ + radius * Math.sin(angle);
+      const testPosition = new Three.Vector3(x, spawnHeight, z);
+      
+      // Check if this position is safe
+      if (!this.willCollide(testPosition)) {
+        return testPosition;
+      }
+      
+      // Move to next position in spiral
+      angle += Math.PI / 2; // 90 degrees
+      if (angle >= Math.PI * 2) {
+        angle = 0;
+        radius += stepSize;
+      }
+      
+      attempts++;
+    }
+    
+    // If we couldn't find a safe spot, return a default position
+    console.warn("Could not find safe spawn position, using default");
+    return new Three.Vector3(centerX, spawnHeight, centerZ);
   }
 }
