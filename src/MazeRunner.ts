@@ -47,22 +47,27 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
     this.size = size;
     this.target = target;
 
-    let ramp = new Ramp(
+    const lines = new Three.TextureLoader().load('lines.png');
+    lines.wrapS = Three.RepeatWrapping;
+    lines.wrapT = Three.RepeatWrapping;
+
+    const ramp1 = new Ramp(
       new Three.Color(0xFD8902),
       new Three.Color(0xFFC501),
       new Three.Color(0xFFED5B),
-      new Three.Color(0xFEFE7C)
+      new Three.Color(0xFEFE7C),
+      [25, 25, 25, 25]
     );
 
-    MazeRunner.normalMaterial = createToonShader(ramp);
+    MazeRunner.normalMaterial = createToonShader(ramp1);
 
-    ramp = new Ramp(
-      new Three.Color(0x586B1B),
-      new Three.Color(0xABBE42),
-      new Three.Color(0xABBE42),
-      new Three.Color(0xABBE42)
+    const ramp2 = new Ramp(
+      new Three.Color(0x003798),
+      new Three.Color(0x0261C1),
+      new Three.Color(0x3DABE4),
+      new Three.Color(0x99EAFE)
     );
-    MazeRunner.canBeEatenMaterial = createToonShader(ramp);
+    MazeRunner.canBeEatenMaterial = createToonShader(ramp2);
 
     this.mesh = new Three.Mesh(
       new Three.SphereGeometry(this.size, 24, 24),

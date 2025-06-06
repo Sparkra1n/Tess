@@ -59,6 +59,14 @@ export class Stage {
     this.scene.add(obj.getMesh());
   }
 
+  removeObject(obj: RenderableObject): void {
+    const index = this.objects.indexOf(obj);
+    if (index !== -1) {
+      this.objects.splice(index, 1);
+    }
+    this.scene.remove(obj.getMesh());
+  }
+
   private computeWorldSpaceLights<T extends Three.Light>(
     lights: T[],
     maxLights: number

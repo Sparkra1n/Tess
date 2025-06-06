@@ -107,6 +107,7 @@ export class Player extends RenderableObject {
   }
 
   update(context: GameContext): void {
+    this.supervisor.checkGhostIntersections(this.position);
     let D = new Three.Vector3(0, 0, 0);
     if (context.input.has('w')) {
       D.add(this.direction.clone().multiplyScalar(-this.speed));
@@ -185,20 +186,23 @@ export class Player extends RenderableObject {
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.rotation.y;
 
-    // Animate mouth if needed
     if (this.mouthAnimating) {
       this.mouthAnimationTime += context.deltaTime;
       let t = this.mouthAnimationTime / (this.mouthAnimationDuration / 2);
+
+      // Closing
       if (!this.mouthClosed) {
-        // Closing
+        
         const angle = this.mouthOpenAngle * (1 - t) + this.mouthClosedAngle * t;
         this.setMouthAngle(angle);
         if (t >= 1) {
           this.mouthClosed = true;
           this.mouthAnimationTime = 0;
         }
-      } else {
-        // Opening
+      } 
+
+      // Opening
+      else {
         const angle = this.mouthClosedAngle * (1 - t) + this.mouthOpenAngle * t;
         this.setMouthAngle(angle);
         if (t >= 1) {

@@ -44,4 +44,10 @@ export class RenderableObject<T extends Three.Object3D = Three.Object3D> {
   setPosition(x: number, y: number, z: number): void {
     this.mesh.position.set(x, y, z);
   }
+
+  getBoundingBox(): Three.Box3 {
+    // Compute the bounding box of the mesh
+    const boundingBox = new Three.Box3().setFromObject(this.mesh);
+    return boundingBox;
+  }
 }

@@ -25,6 +25,7 @@ export class Supervisor implements ICollisionHandler {
   private score: number = 0;
   private timer: Timer;
   private canEatGhosts: boolean;
+  private ghosts: MazeRunner[] = [];
 
   constructor() {
     window.addEventListener('mousemove', (e) => {
@@ -64,6 +65,7 @@ export class Supervisor implements ICollisionHandler {
       ghost.setPosition(randX, 1, randZ);
       ++ghostCount;
       this.stage.addObject(ghost);
+      this.ghosts.push(ghost);
     }
 
     this.stage.setCameraFollow(this.player);
@@ -132,6 +134,26 @@ export class Supervisor implements ICollisionHandler {
       }
     }
     return collisions;
+  }
+
+  public checkGhostIntersections(position: Three.Vector3): void {
+    const playerBox = this.player.getBoundingBoxAt(position);
+    
+    for (let i = this.ghosts.length - 1; i >= 0; i--) {
+      const ghost = this.ghosts[i];
+      if (playerBox.intersectsBox(ghost.getBoundingBox())) {
+        if (this.canEatGhosts) {
+          console.log("eaten");
+          this.score += 1000;
+          // Remove from stage
+          this.stage.removeObject(ghost);
+          // Remove from ghosts array
+          this.ghosts.splice(i, 1);
+        } else {
+          console.log("dead");
+        }
+      }
+    }
   }
 
   checkPelletIntersection(position: Three.Vector3): void {
