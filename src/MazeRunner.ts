@@ -41,6 +41,12 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
 
 
   constructor(maze: Maze, speed: number, size: number, target: RenderableObject | null = null) {
+    const material = new Three.MeshPhongMaterial({ 
+      color: 0x00FF00, 
+      shininess: 100,
+      emissive: new Three.Color(0x00FF00),
+      emissiveIntensity: 0.8 
+    });
     super(new Three.Mesh());
     this.maze = maze;
     this.speed = speed;
@@ -122,6 +128,15 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
       }
     }
     return null;
+  }
+  
+  
+  getEatableState() {
+    return this.isEatable;
+  }
+
+  setEatableState(isEatable: boolean) {
+    this.isEatable = isEatable;
   }
 
   update(context: GameContext) {

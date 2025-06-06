@@ -24,6 +24,7 @@ export class Supervisor implements ICollisionHandler {
   private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 3);
   private score: number = 0;
   private timer: Timer;
+  private ghosts: MazeRunner[] = [];
   private canEatGhosts: boolean;
 
   constructor() {
@@ -63,6 +64,7 @@ export class Supervisor implements ICollisionHandler {
       const ghost = new MazeRunner(this.maze, 5, 1.5, this.player);
       ghost.setPosition(randX, 1, randZ);
       ++ghostCount;
+      this.ghosts.push(ghost);
       this.stage.addObject(ghost);
     }
 
@@ -156,6 +158,22 @@ export class Supervisor implements ICollisionHandler {
     const loop = (time: number) => {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
+
+      // Update rush hour timer
+      this.rushHourTimer += deltaTime;
+      const cycleDuration = this.rushHourDuration + this.normalDuration;
+      
+      if (this.rushHourTimer >= cycleDuration) {
+        this.rushHourTimer = 0;
+      }
+      
+      this.isRushHour = this.rushHourTimer < this.rushHourDuration;
+      
+      // Update all ghosts with current rush hour state
+      for (const ghost of this.ghosts) {
+        ghost.setEatableState(this.isRushHour);
+      }
+
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
