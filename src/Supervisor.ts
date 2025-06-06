@@ -56,33 +56,48 @@ export class Supervisor implements ICollisionHandler {
       this.mazeHeight * this.cellSize / 2 + this.cellSize / 2
     );
 
-    // Create 10 ghosts at random positions
-    for (let i = 0; i < 10; i++) {
+    // // Create 10 ghosts at random positions
+    // for (let i = 0; i < 10; i++) {
+    //   const ghost = new MazeRunner(this.maze, 5, 1.5, this.player);
+      
+    //   // Find a random valid position
+    //   let validPosition = false;
+    //   let x = 0;
+    //   let z = 0;
+      
+    //   while (!validPosition) {
+    //     // Get random cell coordinates (avoid edges)
+    //     x = Math.floor(Math.random() * (this.mazeWidth - 2)) + 1;
+    //     z = Math.floor(Math.random() * (this.mazeHeight - 2)) + 1;
+        
+    //     // Convert to world coordinates
+    //     const worldX = x * this.cellSize;
+    //     const worldZ = z * this.cellSize;
+        
+    //     // Check if position is valid (not in wall)
+    //     const testPosition = new Three.Vector3(worldX, 1, worldZ);
+    //     const collisions = this.willCollide(testPosition);
+    //     validPosition = collisions.length === 0;
+    //   }
+      
+    //   ghost.setPosition(x * this.cellSize, 1, z * this.cellSize);
+    //   this.ghosts.push(ghost);
+    //   this.stage.addObject(ghost as unknown as RenderableObject);
+    // }
+
+     // Spawn 5 ghosts
+    const playerPosition = this.player.getPosition();
+    let ghostCount = 0;
+    while (ghostCount < 5) {
+      const randX = Math.random() * (this.mazeWidth - 1) * this.cellSize + this.cellSize / 2;
+      const randZ = Math.random() * (this.mazeHeight - 1) * this.cellSize + this.cellSize / 2;
+      if (Math.sqrt(Math.pow(playerPosition.x - randX, 2) + Math.pow(playerPosition.z - randZ, 2)) < 5 * this.cellSize)
+        continue;
       const ghost = new MazeRunner(this.maze, 5, 1.5, this.player);
-      
-      // Find a random valid position
-      let validPosition = false;
-      let x = 0;
-      let z = 0;
-      
-      while (!validPosition) {
-        // Get random cell coordinates (avoid edges)
-        x = Math.floor(Math.random() * (this.mazeWidth - 2)) + 1;
-        z = Math.floor(Math.random() * (this.mazeHeight - 2)) + 1;
-        
-        // Convert to world coordinates
-        const worldX = x * this.cellSize;
-        const worldZ = z * this.cellSize;
-        
-        // Check if position is valid (not in wall)
-        const testPosition = new Three.Vector3(worldX, 1, worldZ);
-        const collisions = this.willCollide(testPosition);
-        validPosition = collisions.length === 0;
-      }
-      
-      ghost.setPosition(x * this.cellSize, 1, z * this.cellSize);
+      ghost.setPosition(randX, 1, randZ);
+      ++ghostCount;
       this.ghosts.push(ghost);
-      this.stage.addObject(ghost as unknown as RenderableObject);
+      this.stage.addObject(ghost);
     }
 
     this.stage.setCameraFollow(this.player);
