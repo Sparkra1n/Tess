@@ -30,6 +30,9 @@
  * 
  * 2025/06/06
  * Complete pellet removal - Thomas
+ * 
+ * 2025/06/06
+ * Append A-Star-related cell methods - Thomas
  */
 
 import * as Three from 'three';
@@ -74,6 +77,10 @@ export class Maze extends RenderableObject {
     this.mesh.add(this.pelletGroup);
     this.pelletLists = Array.from(Array(this.height), _ => Array.from(Array(this.width), _ => []));
     this.generateMazeMesh();
+  }
+
+  getCellSize() : number {
+    return this.cellSize;
   }
 
   getPelletGroup() : Three.Group {
@@ -153,14 +160,20 @@ export class Maze extends RenderableObject {
     this.generateMaze();
     this.createWallSegments();
 
-    const ramp = new Ramp(
-      new Three.Color(0x273214),
-      new Three.Color(0x586C15),
-      new Three.Color(0x7E9223),
-      new Three.Color(0xADC040)
-    );
+    // const ramp = new Ramp(
+    //   new Three.Color(0x273214),
+    //   new Three.Color(0x586C15),
+    //   new Three.Color(0x7E9223),
+    //   new Three.Color(0xADC040)
+    // );
 
-    const material = createToonShader(ramp);
+    const material = new Three.MeshPhongMaterial({ 
+      color: 0x0000FF, 
+      shininess: 100,
+      emissive: new Three.Color(0x0000FF),
+      emissiveIntensity: 0.8 
+    });
+
     const wallThickness = this.cellSize * 0.1;
     const group = this.getMesh() as Three.Group;
     const uvScale = 1.0 / this.cellSize;
@@ -400,5 +413,25 @@ export class Maze extends RenderableObject {
     const cellPellets = this.pelletLists[gridZ][gridX];
     const index = cellPellets.indexOf(mesh);
     if (index !== -1) cellPellets.splice(index, 1);
+  }
+
+   public getAvailableDirections(x: number, z: number): Direction[] {
+    const directions: Direction[] = [];
+    if (this.grid[z][x] & Direction.North) directions.push(Direction.North);
+    if (this.grid[z][x] & Direction.South) directions.push(Direction.South);
+    if (this.grid[z][x] & Direction.East) directions.push(Direction.East);
+    if (this.grid[z][x] & Direction.West) directions.push(Direction.West);
+    return directions;
+  }
+
+  public getNeighbors(x: number, z: number): Point2[] {
+    const neighbors: Point2[] = [];
+    const directions = [Direction.North, Direction.South, Direction.East, Direction.West];
+    for (const dir of directions) {
+      if (this.grid[z][x] & dir) {
+        neighbors.push(new Point2(x + dx(dir), z + dz(dir)));
+      }
+    }
+    return neighbors;
   }
 }

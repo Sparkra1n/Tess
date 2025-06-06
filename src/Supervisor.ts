@@ -8,9 +8,9 @@
 import * as Three from "three";
 import { Player } from './Player';
 import { Stage } from './Stage';
-import { Maze } from './Maze';
+import { Maze, Point2 } from './Maze';
 import { ICollision, ICollisionHandler } from "./Types";
-import { createToonShader, Ramp } from "./ToonShader";
+import { MazeRunner } from "./MazeRunner";
 
 export class Supervisor implements ICollisionHandler
 {
@@ -18,7 +18,9 @@ export class Supervisor implements ICollisionHandler
   private stage = new Stage();
   private input = new Set<string>();
   private mouse = { x: 0, y: 0, dx: 0, dy: 0 };
-  private maze: Maze = new Maze(50, 50, 5, 2);
+  private gameSize: Point2 = new Point2(20, 20);
+  private cellSize: number = 5;
+  private maze: Maze = new Maze(this.gameSize.x, this.gameSize.z, this.cellSize, 4);
   private score: number = 0;
 
   constructor()
@@ -41,55 +43,14 @@ export class Supervisor implements ICollisionHandler
     this.maze.spawnPellets();
     this.stage.addObject(this.maze);
     this.stage.addObject(this.player);
-    this.player.setPosition(3, 1, 3);
-    
-    const lines = new Three.TextureLoader().load('lines.png');
-    lines.wrapS = Three.RepeatWrapping;
-    lines.wrapT = Three.RepeatWrapping;
 
-    const dot2 = new Three.TextureLoader().load('dot2.png');
-    dot2.wrapS = Three.RepeatWrapping;
-    dot2.wrapT = Three.RepeatWrapping;
-
-    const dot3 = new Three.TextureLoader().load('dot3.png');
-    dot3.wrapS = Three.RepeatWrapping;
-    dot3.wrapT = Three.RepeatWrapping;
-
-    const scratch3 = new Three.TextureLoader().load('scratch3.jpeg');
-    scratch3.wrapS = Three.RepeatWrapping;
-    scratch3.wrapT = Three.RepeatWrapping;
-    
-    
-    // const ramp = new Ramp(
-    //   new Three.Color(0xD51F2C),
-    //   new Three.Color(0xD51F2C),
-    //   new Three.Color(0xFE4A49),
-    //   new Three.Color(0xFE7974),
-    //   [lines, null, null, dot3],
-    //   [new Three.Color(0x6A0006), null, null, new Three.Color(0xFFC9C7)]
-    // );
-// const ramp = new Ramp(
-//   new Three.Color(0x273214), // Shadow
-//   new Three.Color(0x586C15), // Base
-//   new Three.Color(0x7E9223), // Intermediate
-//   new Three.Color(0xADC040), // Highlight
-//   //[4, 30, 33, 33], // no shadow
-//   [5, 29, 33, 33], // 50% shadow
-//   [lines, null, null, null], // Grunge textures
-//   [new Three.Color(0x050801), null, null, null] // Grunge colors
-// );
-
-// const s = new StaticMesh(new Three.Mesh(
-//   new Three.SphereGeometry(5, 32, 32),
-//   createToonShader(ramp)
-// ));
-  // this.stage.addObject(s);
-
+    const halfWay = Math.floor(this.gameSize.x * this.cellSize / 2);
+    this.player.setPosition(halfWay, 1, halfWay);
   
-    // this.floor = new Three.Box3(
-    //   new Three.Vector3(0, -1, 0),
-    //   new Three.Vector3(50, 0, 50),
-    // );
+
+    const ghost1 = new MazeRunner(this.maze, 5, 1.5, this.player);
+    ghost1.setPosition(0, 1, 0);
+    this.stage.addObject(ghost1);
     this.stage.setCameraFollow(this.player);
     this.run();
   }
@@ -170,8 +131,7 @@ export class Supervisor implements ICollisionHandler
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
-        mouse: this.mouse,
-        playerPosition: this.player.getPosition()
+        mouse: this.mouse
       });
       this.mouse.dx = 0;
       this.mouse.dy = 0;

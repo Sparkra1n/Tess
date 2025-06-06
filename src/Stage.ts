@@ -191,7 +191,7 @@ export class Stage {
 
     const minimapSize = 200;
     const minimapX = window.innerWidth - minimapSize - 10; // 10px margin from right
-    const minimapY = 10;                                   // 10px from top
+    const minimapY = window.innerHeight - minimapSize - 10;                                   // 10px from top
     this.renderer.setScissorTest(true);
     this.renderer.setScissor(minimapX, minimapY, minimapSize, minimapSize);
     this.renderer.setViewport(minimapX, minimapY, minimapSize, minimapSize);

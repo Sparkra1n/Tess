@@ -11,6 +11,9 @@
  * 
  * 2025/04/17
  * Add in player position for enemy pathfinding - Thomas
+ * 
+ * 2025/04/17
+ * Removed player position since it can be passed to MazeRunner - Thomas
  */
 
 import * as Three from "three";
@@ -24,5 +27,4 @@ export interface GameContext {
     dx: number; 
     dy: number
   };
-  playerPosition: Three.Vector3;
 }
