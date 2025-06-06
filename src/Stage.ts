@@ -18,12 +18,8 @@ export class Stage {
   private camera = new Three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
   private renderer = new Three.WebGLRenderer();
   private objects: RenderableObject[] = [];
-  private cameraOffset = new Three.Vector3(0, 3, -6);
   private cameraTarget: RenderableObject | null = null;
-  private lerpFactor = 0.95;
-  // private cameraMode: 'third-person' | 'first-person' | 'top-down' = 'third-person';
   private cameraPitch: number = 0;
-  private lastCState: boolean = false;
   private minimapCamera: Three.OrthographicCamera;
 
   constructor() {
@@ -48,10 +44,10 @@ export class Stage {
 
     this.renderer.domElement.addEventListener('click', () => {
       // if (this.cameraMode === 'first-person') {
-        this.renderer.domElement.requestPointerLock();
+      this.renderer.domElement.requestPointerLock();
       // }
     });
-    
+
 
     this.minimapCamera = new Three.OrthographicCamera(-25, 25, -25, 25, 0.1, 100);
     this.minimapCamera.position.set(0, 50, 0);
@@ -77,17 +73,17 @@ export class Stage {
     });
     return { vectors, colors, numLights };
   }
-  
+
   private updateUniforms(): void {
     const maxLights = 4;
-  
+
     const pointLights = this.scene.children.filter(child => child instanceof Three.PointLight) as Three.PointLight[];
     const directionalLights = this.scene.children.filter(child => child instanceof Three.DirectionalLight) as Three.DirectionalLight[];
     const ambientLights = this.scene.children.filter(child => child instanceof Three.AmbientLight) as Three.AmbientLight[];
-  
+
     const pointLightData = this.computeWorldSpaceLights(pointLights, maxLights);
     const directionalLightData = this.computeWorldSpaceLights(directionalLights, maxLights);
-  
+
     let ambientColor = new Three.Color(0, 0, 0);
     let ambientIntensity = 0.0;
     ambientLights.forEach(light => {
@@ -95,13 +91,13 @@ export class Stage {
       ambientIntensity += light.intensity;
     });
     ambientIntensity = Math.min(ambientIntensity, 1.0);
-  
+
     for (const obj of this.objects) {
       obj.getMesh().traverse(child => {
         if (!(child instanceof Three.Mesh) || !(child.material instanceof Three.ShaderMaterial)) return;
         const material = child.material;
         if (!material.uniforms.numPointLights) return;
-  
+
         material.uniforms.numPointLights.value = pointLightData.numLights;
         pointLightData.vectors.forEach((pos, i) => {
           material.uniforms.pointLightPositions.value[i].copy(pos);
@@ -112,7 +108,7 @@ export class Stage {
           material.uniforms.directionalLightDirections.value[i].copy(dir);
           material.uniforms.directionalLightColors.value[i].copy(directionalLightData.colors[i]);
         });
-  
+
         material.uniforms.ambientLightColor.value.copy(ambientColor);
         material.uniforms.ambientIntensity.value = ambientIntensity;
       });
@@ -123,49 +119,19 @@ export class Stage {
     this.cameraTarget = target;
   }
 
-  // toggleCameraMode() {
-    // const modes: ('third-person' | 'first-person' | 'top-down')[] = ['third-person', 'first-person', 'top-down'];
-    // this.cameraMode = modes[(modes.indexOf(this.cameraMode) + 1) % modes.length];
-
-    // if (this.cameraMode === 'first-person') {
-      // this.renderer.domElement.requestPointerLock();
-    // } else if (document.pointerLockElement === this.renderer.domElement) {
-      // document.exitPointerLock();
-    // }
-  // }
-
   updateCamera(context: GameContext): void {
     if (!this.cameraTarget) return;
-    const { deltaTime, mouse } = context;
+    const {mouse} = context;
 
     // if (this.cameraMode === 'first-person') {
-      if (document.pointerLockElement === this.renderer.domElement) {
-        const sensitivity = 0.002;
-        const rotation = this.cameraTarget.getRotation();
-        rotation.y -= mouse.dx * sensitivity;
-        this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch - mouse.dy * sensitivity));
-      }
-      this.camera.position.copy(this.cameraTarget.getPosition()).add(new Three.Vector3(0, 3, 0));
-      this.camera.rotation.set(this.cameraPitch, this.cameraTarget.getRotation().y, 0);
-    // }
-    
-  //   else if (this.cameraMode === 'third-person') {
-  //     const targetPosition = this.cameraTarget.getMesh().position;
-  //     const direction = new Three.Vector3(0, 0, 1);
-  //     const offset = direction.clone().multiplyScalar(-this.cameraOffset.z).setY(this.cameraOffset.y);
-  //     const desiredPosition = targetPosition.clone().add(offset);
-  //     const alpha = 1 - Math.pow(1 - this.lerpFactor, deltaTime);
-  //     this.camera.position.lerp(desiredPosition, alpha);
-  //     this.camera.lookAt(targetPosition);
-  //   } 
-    
-  //   else if (this.cameraMode === 'top-down') {
-  //     const targetPosition = this.cameraTarget.getMesh().position;
-  //     const desiredPosition = new Three.Vector3(targetPosition.x, 25, targetPosition.z);
-  //     const alpha = 1 - Math.pow(1 - this.lerpFactor, deltaTime);
-  //     this.camera.position.lerp(desiredPosition, alpha);
-  //     this.camera.lookAt(targetPosition);
-  //   }
+    if (document.pointerLockElement === this.renderer.domElement) {
+      const sensitivity = 0.002;
+      const rotation = this.cameraTarget.getRotation();
+      rotation.y -= mouse.dx * sensitivity;
+      this.cameraPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraPitch - mouse.dy * sensitivity));
+    }
+    this.camera.position.copy(this.cameraTarget.getPosition()).add(new Three.Vector3(0, 3, 0));
+    this.camera.rotation.set(this.cameraPitch, this.cameraTarget.getRotation().y, 0);
   }
 
   update(context: GameContext): void {
@@ -179,7 +145,7 @@ export class Stage {
       obj.update(context);
     }
     this.updateCamera(context);
-    
+
     // Render main scene
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
@@ -194,7 +160,7 @@ export class Stage {
 
     const minimapSize = 200;
     const minimapX = window.innerWidth - minimapSize - 10; // 10px margin from right
-    const minimapY = window.innerHeight - minimapSize - 10;                                   // 10px from top
+    const minimapY = window.innerHeight - minimapSize - 10;  // 10px from top
     this.renderer.setScissorTest(true);
     this.renderer.setScissor(minimapX, minimapY, minimapSize, minimapSize);
     this.renderer.setViewport(minimapX, minimapY, minimapSize, minimapSize);

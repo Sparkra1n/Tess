@@ -16,12 +16,12 @@ export function dx(direction: Direction): number {
   }
 }
 
-export function dy(direction: Direction): number {
+export function dz(direction: Direction): number {
   switch (direction) {
     case Direction.North:
-      return 1;
-    case Direction.South:
       return -1;
+    case Direction.South:
+      return 1;
     default:
       return 0;
   }

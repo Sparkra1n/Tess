@@ -1,6 +1,6 @@
 /**
- * @file Maze.ts
- * @brief Contains the maze mesh generator
+ * @file GameContext.ts
+ * @brief Contains the game state data
  * @author Thomas Z.
  * Date: 2025/04/17
  * 
@@ -21,10 +21,10 @@ import * as Three from "three";
 export interface GameContext {
   deltaTime: number;
   input: Set<string>;
-  mouse: { 
+  mouse: {
     x: number;
-    y: number; 
-    dx: number; 
-    dy: number
+    y: number;
+    dx: number;
+    dy: number;
   };
 }

@@ -36,7 +36,7 @@
  */
 
 import * as Three from 'three';
-import { Direction, dx, dy as dz, opposite } from "./Directions.ts";
+import { Direction, dx, dz, opposite } from "./Directions.ts";
 import { RenderableObject } from "./Types.ts";
 import { Ramp, createToonShader } from "./ToonShader.ts"
 

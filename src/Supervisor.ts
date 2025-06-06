@@ -20,7 +20,7 @@ export class Supervisor implements ICollisionHandler {
   private mazeWidth: number = 20;
   private mazeHeight: number = 20;
   private cellSize: number = 5;
-  private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 4);
+  private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 2.5);
   private score: number = 0;
 
   constructor() {
@@ -136,8 +136,8 @@ export class Supervisor implements ICollisionHandler {
         input: this.input,
         mouse: this.mouse
       });
-      this.mouse.dx = 0;
       this.mouse.dy = 0;
+      this.mouse.dx = 0;
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
