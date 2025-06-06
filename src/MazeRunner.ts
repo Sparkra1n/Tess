@@ -100,7 +100,6 @@ export class MazeRunner extends RenderableObject {
     return null;
   }
   
-  
   getEatableState() {
     return this.isEatable;
   }
@@ -121,7 +120,6 @@ export class MazeRunner extends RenderableObject {
       this.mesh.material.color.copy(this.normalColor);
       this.mesh.material.emissive.copy(this.normalColor);
     }
-
     // Get current and target grid positions
     const currentPos = this.getPosition();
     const targetPos = this.target.getPosition();
