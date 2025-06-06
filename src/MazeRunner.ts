@@ -38,6 +38,7 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
   private currentTargetIndex: number = 0;
   private static normalMaterial: Three.ShaderMaterial;
   private static canBeEatenMaterial: Three.ShaderMaterial;
+  private isEatable: boolean;
 
 
   constructor(maze: Maze, speed: number, size: number, target: RenderableObject | null = null) {
@@ -52,6 +53,7 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
     this.speed = speed;
     this.size = size;
     this.target = target;
+    this.isEatable = false; 
 
     let ramp = new Ramp(
       new Three.Color(0xFD8902),
@@ -127,9 +129,9 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
         }
       }
     }
-    return null;
+
+    return null; // No path found
   }
-  
   
   getEatableState() {
     return this.isEatable;
