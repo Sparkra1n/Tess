@@ -54,15 +54,15 @@ export class Supervisor implements ICollisionHandler {
       this.mazeHeight * this.cellSize / 2 + this.cellSize / 2
     );
 
-    // Spawn 5 ghosts
+    // Spawn ghosts
     const playerPosition = this.player.getPosition();
     let ghostCount = 0;
-    while (ghostCount < 5) {
+    while (ghostCount < 10) {
       const randX = Math.random() * (this.mazeWidth - 1) * this.cellSize + this.cellSize / 2;
       const randZ = Math.random() * (this.mazeHeight - 1) * this.cellSize + this.cellSize / 2;
       if (Math.sqrt(Math.pow(playerPosition.x - randX, 2) + Math.pow(playerPosition.z - randZ, 2)) < 5 * this.cellSize)
         continue;
-      const ghost = new MazeRunner(this.maze, 5, 1.5, this.player);
+      const ghost = new MazeRunner(this.maze, 10, 1.5, this.player);
       ghost.setPosition(randX, 1, randZ);
       ++ghostCount;
       this.stage.addObject(ghost);
@@ -164,14 +164,13 @@ export class Supervisor implements ICollisionHandler {
       const ghost = this.ghosts[i];
       if (playerBox.intersectsBox(ghost.getBoundingBox())) {
         if (this.canEatGhosts) {
+          this.score += 500;
           console.log("eaten");
-          this.score += 1000;
-          // Remove from stage
           this.stage.removeObject(ghost);
-          // Remove from ghosts array
           this.ghosts.splice(i, 1);
-        } else {
-          console.log("dead");
+        }
+        else {
+          this.endGame(GameState.Lost);
         }
       }
     }
@@ -186,9 +185,9 @@ export class Supervisor implements ICollisionHandler {
         this.maze.removePellet(mesh);
         this.score += 10;
         this.player.triggerMouthAnimation();
-        const pelletCounterElement = document.getElementById('pelletCounter');
-        if (pelletCounterElement)
-          pelletCounterElement.textContent = `Score: ${this.score}`;
+        if (this.score >= 1000) {
+          this.endGame(GameState.Won);
+        }
       }
     }
   }
@@ -222,6 +221,9 @@ export class Supervisor implements ICollisionHandler {
         this.mouse.dy = 0;
         this.mouse.dx = 0;
         this.timer.update(deltaTime);
+        const pelletCounterElement = document.getElementById('pelletCounter');
+        if (pelletCounterElement)
+          pelletCounterElement.textContent = `Score: ${this.score}`;
       }
       requestAnimationFrame(loop);
     };
