@@ -159,21 +159,6 @@ export class Supervisor implements ICollisionHandler {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
 
-      // Update rush hour timer
-      this.rushHourTimer += deltaTime;
-      const cycleDuration = this.rushHourDuration + this.normalDuration;
-      
-      if (this.rushHourTimer >= cycleDuration) {
-        this.rushHourTimer = 0;
-      }
-      
-      this.isRushHour = this.rushHourTimer < this.rushHourDuration;
-      
-      // Update all ghosts with current rush hour state
-      for (const ghost of this.ghosts) {
-        ghost.setEatableState(this.isRushHour);
-      }
-
       this.stage.update({
         deltaTime: deltaTime,
         input: this.input,
