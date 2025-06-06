@@ -43,9 +43,7 @@ export class Stage {
     document.body.appendChild(this.renderer.domElement);
 
     this.renderer.domElement.addEventListener('click', () => {
-      // if (this.cameraMode === 'first-person') {
       this.renderer.domElement.requestPointerLock();
-      // }
     });
 
 
