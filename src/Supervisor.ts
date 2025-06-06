@@ -154,6 +154,7 @@ export class Supervisor implements ICollisionHandler
       if (playerBox.intersectsSphere(sphere)) {
         this.maze.removePellet(mesh);
         this.score += 10;
+        this.player.triggerMouthAnimation();
         const pelletCounterElement = document.getElementById('pelletCounter');
         if (pelletCounterElement)
           pelletCounterElement.textContent = `Score: ${this.score}`;
