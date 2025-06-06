@@ -27,7 +27,7 @@ export class Supervisor implements ICollisionHandler {
   private canEatGhosts: boolean;
   private ghosts: MazeRunner[] = [];
   private state: GameState = GameState.Start;
-
+  private scoreToWin: number = 5000;
   constructor() {
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.clientX;
@@ -189,15 +189,13 @@ export class Supervisor implements ICollisionHandler {
         this.maze.removePellet(mesh);
         this.score += 10;
         this.player.triggerMouthAnimation();
-        if (this.score >= 1000) {
-          this.endGame(GameState.Won);
-        }
       }
     }
   }
 
   private endGame(finalState: GameState.Won | GameState.Lost): void {
     this.state = finalState;
+    document.exitPointerLock();
     const gameScreen = document.getElementById('gameScreen');
     const endScreen = document.getElementById('endScreen');
     const endMessage = document.getElementById('endMessage');
@@ -228,6 +226,9 @@ export class Supervisor implements ICollisionHandler {
         const pelletCounterElement = document.getElementById('pelletCounter');
         if (pelletCounterElement)
           pelletCounterElement.textContent = `Score: ${this.score}`;
+        if (this.score >= this.scoreToWin) {
+          this.endGame(GameState.Won);
+        }
       }
       requestAnimationFrame(loop);
     };
