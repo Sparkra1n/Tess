@@ -54,7 +54,7 @@ export class WallSegment {
   }
 }
 
-export class Maze extends RenderableObject {
+export class Maze extends RenderableObject<Three.Group> {
   private width: number;
   private height: number;
   private cellSize: number;

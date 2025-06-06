@@ -10,8 +10,15 @@
  * Wrote it - Thomas
  */
 
+interface ITimerElem {
+  remaining: number;
+  interval: number;
+  callback: () => void;
+  repeat: boolean;
+}
+
 export class Timer {
-  private timers: Map<number, { remaining: number; interval: number; callback: () => void; repeat: boolean }>;
+  private timers: Map<number, ITimerElem>;
   private nextId: number;
 
   constructor() {
