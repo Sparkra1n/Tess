@@ -40,13 +40,6 @@ export class MazeRunner extends RenderableObject {
     this.size = size;
     this.target = target;
 
-    const material = new Three.MeshPhongMaterial({ 
-      color: 0x00FF00, 
-      shininess: 100,
-      emissive: new Three.Color(0x00FF00),
-      emissiveIntensity: 0.8 
-    });
-
     this.mesh = new Three.Mesh(
       new Three.SphereGeometry(this.size, 24, 24),
       material
