@@ -28,6 +28,9 @@ export class Supervisor implements ICollisionHandler {
   private ghosts: MazeRunner[] = [];
   private state: GameState = GameState.Start;
   private scoreToWin: number = 1000; // Default to easy
+  private pickupSound = new Audio('public/pick_up.wav');
+  private victorySound = new Audio('public/victory.wav');
+  private loseSound = new Audio('public/lose.wav');
 
   constructor() {
     window.addEventListener('mousemove', (e) => {
@@ -219,6 +222,8 @@ export class Supervisor implements ICollisionHandler {
         this.maze.removePellet(mesh);
         this.score += 10;
         this.player.triggerMouthAnimation();
+        this.pickupSound.currentTime = 0;
+        this.pickupSound.play();
       }
     }
   }
@@ -233,6 +238,13 @@ export class Supervisor implements ICollisionHandler {
       gameScreen.style.display = 'none';
       endScreen.style.display = 'block';
       endMessage.textContent = finalState === GameState.Won ? 'You Win!' : 'You Lose!';
+    }
+    if (finalState === GameState.Won) {
+      this.victorySound.currentTime = 0;
+      this.victorySound.play();
+    } else {
+      this.loseSound.currentTime = 0;
+      this.loseSound.play();
     }
   }
 
