@@ -35,8 +35,21 @@ export class MazeRunner extends RenderableObject {
   private target: RenderableObject | null;
   private path: Point2[] = [];
   private currentTargetIndex: number = 0;
+  // normal color is green
+  private mesh: Three.Mesh;
+  private normalColor = new Three.Color(0x00FF00);
+  // eatable color is yellow
+  private eatableColor = new Three.Color(0xFFFF00);
+  // isEatable is false by default
+  private isEatable = false;
 
   constructor(maze: Maze, speed: number, size: number, target: RenderableObject | null = null) {
+    const material = new Three.MeshPhongMaterial({ 
+      color: 0x00FF00, 
+      shininess: 100,
+      emissive: new Three.Color(0x00FF00),
+      emissiveIntensity: 0.8 
+    });
     super(new Three.Mesh());
     this.maze = maze;
     this.speed = speed;
@@ -69,13 +82,6 @@ export class MazeRunner extends RenderableObject {
     //   [lines, null, null, null], // Grunge textures
     //   [new Three.Color(0x050801), null, null, null] // Grunge colors
     // );
-
-    const material = new Three.MeshPhongMaterial({ 
-      color: 0x00FF00, 
-      shininess: 100,
-      emissive: new Three.Color(0x00FF00),
-      emissiveIntensity: 0.8 
-    });
 
     this.mesh = new Three.Mesh(
       new Three.SphereGeometry(this.size, 24, 24),
@@ -143,10 +149,28 @@ export class MazeRunner extends RenderableObject {
 
     return []; // No path found
   }
+  
+  getEatableState() {
+    return this.isEatable;
+  }
+
+  setEatableState(isEatable: boolean) {
+    this.isEatable = isEatable;
+  }
 
   update(context: GameContext) {
     if (!this.target)
       return;
+
+    if (this.isEatable) {
+      // Change color to yellow when eatable
+      this.mesh.material.color.copy(this.eatableColor);
+      this.mesh.material.emissive.copy(this.eatableColor);
+    }
+    else {
+      this.mesh.material.color.copy(this.normalColor);
+      this.mesh.material.emissive.copy(this.normalColor);
+    }
 
     // Get current and target grid positions
     const currentPos = this.getPosition();
