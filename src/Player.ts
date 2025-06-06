@@ -30,7 +30,8 @@ export class Player extends RenderableObject {
   private gravity = -0.01;
   private size: number;
   private supervisor: Supervisor;
-  private mouthAnimating = true;
+  private pacmanMesh: Three.Mesh;
+  private mouthAnimating = false;
   private mouthAnimationTime = 0;
   private mouthAnimationDuration = 0.3; // seconds
   private mouthClosed = false;
@@ -60,10 +61,10 @@ export class Player extends RenderableObject {
       emissive: new Three.Color(0xFF0000),
       emissiveIntensity: 0.8 
     });
-    this.mesh = new Three.Mesh(geometry, material);
-    this.mesh.castShadow = true;
-    this.mesh.rotation.y = -Math.PI / 2;
-    this.mesh.add(this.mesh);
+    this.pacmanMesh = new Three.Mesh(geometry, material);
+    this.pacmanMesh.castShadow = true;
+    this.pacmanMesh.rotation.y = -Math.PI / 2;
+    this.mesh.add(this.pacmanMesh);
     this.mesh.position.copy(this.position);
   }
 
@@ -92,6 +93,10 @@ export class Player extends RenderableObject {
 
   getSize() {
     return this.size;
+  }
+
+  getSpeed() {
+    return this.speed;
   }
 
   getBoundingBoxAt(position: Three.Vector3) {
@@ -220,7 +225,7 @@ export class Player extends RenderableObject {
       0,
       Math.PI
     );
-    this.mesh.geometry.dispose();
-    this.mesh.geometry = geometry;
+    this.pacmanMesh.geometry.dispose();
+    this.pacmanMesh.geometry = geometry;
   }
 }

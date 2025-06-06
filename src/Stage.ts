@@ -31,8 +31,11 @@ export class Stage {
     pointLight.position.set(10, 10, 10);
     this.scene.add(pointLight);
 
-    const ambientLight = new Three.AmbientLight(0x404040, 0.3);
-    this.scene.add(ambientLight);
+    // const ambientLight = new Three.AmbientLight(0x404040, 0.3);
+    // this.scene.add(ambientLight);
+
+    const ambient = new Three.AmbientLight(0xffffff, 0.5);
+    this.scene.add(ambient);
 
     this.addSpaceSkydome();
     this.camera.position.set(0, 2, 5);
