@@ -14,7 +14,7 @@ import { MazeRunner } from "./MazeRunner";
 import { Timer } from "./Timer";
 
 export class Supervisor implements ICollisionHandler {
-  private player = new Player(2, this);
+  private player = new Player(1, this);
   private stage = new Stage();
   private input = new Set<string>();
   private mouse = { x: 0, y: 0, dx: 0, dy: 0 };
@@ -205,6 +205,7 @@ export class Supervisor implements ICollisionHandler {
           console.log("eaten");
           this.stage.removeObject(ghost);
           this.ghosts.splice(i, 1);
+          this.player.increaseSize(0.15); // Increase size when eating a ghost
         }
         else {
           this.endGame(GameState.Lost);

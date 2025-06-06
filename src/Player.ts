@@ -25,7 +25,10 @@ export class Player extends RenderableObject {
   private velocity = new Three.Vector3(0, 0, 0);
   private direction = new Three.Vector3(0, 0, 1);
   private rotation = new Three.Vector3(0, 0, 0);
-  private speed = 0.2;
+  private baseSpeed = 0.2; // Base speed for the smallest size
+  private minSpeed = 0.1;  // Minimum speed when at maximum size
+  private maxSize = 3.0;   // Maximum size before speed stops decreasing
+  private speed = 0.2;     // Current speed (will be updated by updateSpeed)
   private jumpSpeed = 0.15;
   private gravity = -0.01;
   private size: number;
@@ -42,6 +45,7 @@ export class Player extends RenderableObject {
     super(new Three.Mesh);
     this.size = size;
     this.supervisor = supervisor;
+    this.updateSpeed(); // Initialize speed based on starting size
 
     // Pac-Man: a yellow sphere with a wedge cut out for the mouth
     const radius = this.size / 2;
@@ -66,6 +70,13 @@ export class Player extends RenderableObject {
     this.pacmanMesh.rotation.y = -Math.PI / 2;
     this.mesh.add(this.pacmanMesh);
     this.mesh.position.copy(this.position);
+  }
+
+  private updateSpeed() {
+    // Calculate speed based on size
+    // Speed decreases linearly from baseSpeed to minSpeed as size increases
+    const sizeRatio = Math.min(this.size / this.maxSize, 1);
+    this.speed = this.baseSpeed - (this.baseSpeed - this.minSpeed) * sizeRatio;
   }
 
   public triggerMouthAnimation() {
@@ -231,5 +242,39 @@ export class Player extends RenderableObject {
     );
     this.pacmanMesh.geometry.dispose();
     this.pacmanMesh.geometry = geometry;
+  }
+
+  public increaseSize(amount: number = 0.2) {
+    // Increase size
+    this.size += amount;
+    
+    // Update speed based on new size
+    this.updateSpeed();
+    
+    // Remove old mesh
+    this.mesh.remove(this.pacmanMesh);
+    
+    // Create new mesh with updated size
+    const radius = this.size / 2;
+    const mouthOpen = Math.PI / 4; // 45 degree mouth
+    const geometry = new Three.SphereGeometry(
+      radius, // radius
+      32,     // width segments
+      32,     // height segments
+      mouthOpen, // phiStart (start angle)
+      2 * Math.PI - 2 * mouthOpen, // phiLength (angle of mouth opening)
+      0,      // thetaStart
+      Math.PI // thetaLength (full sphere)
+    );
+    const material = new Three.MeshPhongMaterial({ 
+      color: 0xFFFF00, 
+      shininess: 100,
+      emissive: new Three.Color(0xFF0000),
+      emissiveIntensity: 0.8 
+    });
+    this.pacmanMesh = new Three.Mesh(geometry, material);
+    this.pacmanMesh.castShadow = true;
+    this.pacmanMesh.rotation.y = -Math.PI / 2;
+    this.mesh.add(this.pacmanMesh);
   }
 }
