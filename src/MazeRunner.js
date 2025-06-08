@@ -1,5 +1,5 @@
 /**
- * @file MazeRunner.ts
+ * @file MazeRunner.js
  * @brief Contains the ghost enemy pathfinding logic
  * @author Thomas Z.
  * Date: 2025/06/05
@@ -15,38 +15,22 @@
  */
 
 import * as Three from "three";
-import { RenderableObject } from "./Types";
-import { Maze, Point2 } from "./Maze";
-import { GameContext } from "./GameContext";
-import { Ramp, createToonShader } from "./ToonShader";
+import { RenderableObject } from "./Types.js";
+import { Maze, Point2 } from "./Maze.js";
+import { Ramp, createToonShader } from "./ToonShader.js";
 
 class AStarNode {
-  constructor(
-    public tile: Point2,
-    public parent: AStarNode | null,
-    public g: number,
-    public f: number
-  ) { }
+  constructor(tile, parent, g, f) {
+    this.tile = tile;
+    this.parent = parent;
+    this.g = g;
+    this.f = f;
+  }
 }
 
-export class MazeRunner extends RenderableObject<Three.Mesh> {
-  private maze: Maze;
-  private speed: number;
-  private size: number;
-  private target: RenderableObject | null;
-  private path: Point2[] = [];
-  private currentTargetIndex: number = 0;
-  private static normalMaterial: Three.ShaderMaterial;
-  private static canBeEatenMaterial: Three.ShaderMaterial;
+export class MazeRunner extends RenderableObject {
 
-
-  constructor(maze: Maze, speed: number, size: number, target: RenderableObject | null = null) {
-    super(new Three.Mesh());
-    this.maze = maze;
-    this.speed = speed;
-    this.size = size;
-    this.target = target;
-
+  constructor(maze, speed, size, target = null) {
     const ramp1 = new Ramp(
       new Three.Color(0xFD8902),
       new Three.Color(0xFFC501),
@@ -64,19 +48,27 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
     );
     MazeRunner.canBeEatenMaterial = createToonShader(ramp2);
 
-    this.mesh = new Three.Mesh(
-      new Three.SphereGeometry(this.size, 24, 24),
+    const mesh = new Three.Mesh(
+      new Three.SphereGeometry(size, 24, 24),
       MazeRunner.normalMaterial
     );
+    super(mesh);
+    this.mesh = mesh;
+    this.maze = maze;
+    this.speed = speed;
+    this.size = size;
+    this.target = target;
+    this.path = [];
+    this.currentTargetIndex = 0;
   }
 
-  private heuristic(start: Point2, goal: Point2): number {
+  heuristic(start, goal) {
     return Math.abs(start.x - goal.x) + Math.abs(start.z - goal.z);
   }
 
-  private reversePath(node: AStarNode | null): Point2[] {
-    const path: Point2[] = [];
-    let current: AStarNode | null = node;
+  reversePath(node) {
+    const path = [];
+    let current = node;
     while (current) {
       path.push(current.tile);
       current = current.parent;
@@ -84,10 +76,10 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
     return path.reverse();
   }
 
-  private getPathToTile(start: Point2, goal: Point2): Point2[] | null {
-    const openList: AStarNode[] = [];
-    const closedList: Set<string> = new Set();
-    const allNodes: Map<string, AStarNode> = new Map();
+  getPathToTile(start, goal) {
+    const openList = [];
+    const closedList = new Set();
+    const allNodes = new Map();
 
     const startNode = new AStarNode(start, null, 0, this.heuristic(start, goal));
     const startKey = `${start.x},${start.z}`;
@@ -96,7 +88,7 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
 
     while (openList.length > 0) {
       openList.sort((a, b) => a.f - b.f);
-      const current = openList.shift()!;
+      const current = openList.shift();
       const currentKey = `${current.tile.x},${current.tile.z}`;
 
       if (current.tile.x === goal.x && current.tile.z === goal.z) {
@@ -124,7 +116,7 @@ export class MazeRunner extends RenderableObject<Three.Mesh> {
     return null;
   }
 
-  update(context: GameContext) {
+  update(context) {
     if (!this.target) return;
 
     // errors

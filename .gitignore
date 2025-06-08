@@ -2,7 +2,6 @@
 /.vite/
 /dist/
 *.log
-*.d.ts
 .env
 .env.local
 .env.*.local

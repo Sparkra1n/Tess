@@ -1,5 +1,5 @@
 /**
- * @file Stage.ts
+ * @file Stage.js
  * @brief Contains the scene manager and star background.
  * @author Thomas Z.
  * Date: 2025/05/08
@@ -10,19 +10,17 @@
  */
 
 import * as Three from 'three';
-import { RenderableObject } from './Types';
-import { GameContext } from "./GameContext.ts"
 
 export class Stage {
-  private scene = new Three.Scene();
-  private camera = new Three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  private renderer = new Three.WebGLRenderer();
-  private objects: RenderableObject[] = [];
-  private cameraTarget: RenderableObject | null = null;
-  private cameraPitch: number = 0;
-  private minimapCamera: Three.OrthographicCamera;
 
   constructor() {
+    this.scene = new Three.Scene();
+    this.camera = new Three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    this.renderer = new Three.WebGLRenderer();
+    this.objects = [];
+    this.cameraTarget = null;
+    this.cameraPitch = 0;
+
     // Main directional light
     const directionalLight = new Three.DirectionalLight(0xffffff, 1.0);
     directionalLight.position.set(10, 20, 10);
@@ -60,12 +58,12 @@ export class Stage {
     this.minimapCamera.lookAt(0, 0, 0);
   }
 
-  addObject(obj: RenderableObject) {
+  addObject(obj) {
     this.objects.push(obj);
     this.scene.add(obj.getMesh());
   }
 
-  removeObject(obj: RenderableObject): void {
+  removeObject(obj) {
     const index = this.objects.indexOf(obj);
     if (index !== -1) {
       this.objects.splice(index, 1);
@@ -73,13 +71,10 @@ export class Stage {
     this.scene.remove(obj.getMesh());
   }
 
-  private computeWorldSpaceLights<T extends Three.Light>(
-    lights: T[],
-    maxLights: number
-  ): { vectors: Three.Vector3[], colors: Three.Color[], numLights: number } {
+  computeWorldSpaceLights(lights, maxLights) {
     const numLights = Math.min(lights.length, maxLights);
-    const vectors = new Array<Three.Vector3>(maxLights).fill(new Three.Vector3(0, 0, 0));
-    const colors = new Array<Three.Color>(maxLights).fill(new Three.Color(1, 1, 1));
+    const vectors = new Array(maxLights).fill(new Three.Vector3(0, 0, 0));
+    const colors = new Array(maxLights).fill(new Three.Color(1, 1, 1));
     lights.slice(0, maxLights).forEach((light, i) => {
       const vector = light.position.clone();
       vectors[i] = vector;
@@ -88,12 +83,12 @@ export class Stage {
     return { vectors, colors, numLights };
   }
 
-  private updateUniforms(): void {
+  updateUniforms(){
     const maxLights = 4;
 
-    const pointLights = this.scene.children.filter(child => child instanceof Three.PointLight) as Three.PointLight[];
-    const directionalLights = this.scene.children.filter(child => child instanceof Three.DirectionalLight) as Three.DirectionalLight[];
-    const ambientLights = this.scene.children.filter(child => child instanceof Three.AmbientLight) as Three.AmbientLight[];
+    const pointLights = this.scene.children.filter(child => child instanceof Three.PointLight);
+    const directionalLights = this.scene.children.filter(child => child instanceof Three.DirectionalLight);
+    const ambientLights = this.scene.children.filter(child => child instanceof Three.AmbientLight);
 
     const pointLightData = this.computeWorldSpaceLights(pointLights, maxLights);
     const directionalLightData = this.computeWorldSpaceLights(directionalLights, maxLights);
@@ -129,11 +124,11 @@ export class Stage {
     }
   }
 
-  setCameraFollow(target: RenderableObject) {
+  setCameraFollow(target) {
     this.cameraTarget = target;
   }
 
-  updateCamera(context: GameContext): void {
+  updateCamera(context){
     if (!this.cameraTarget) return;
     const {mouse} = context;
 
@@ -148,11 +143,8 @@ export class Stage {
     this.camera.rotation.set(this.cameraPitch, this.cameraTarget.getRotation().y, 0);
   }
 
-  update(context: GameContext): void {
-    // const cPressed = context.input.has('c');
-    // if (cPressed && !this.lastCState) this.toggleCameraMode();
-    // this.lastCState = cPressed;
-
+  update(context){
+    
     this.updateUniforms();
     for (const obj of this.objects) {
       if (!obj) continue;

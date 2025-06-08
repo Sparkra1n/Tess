@@ -1,5 +1,5 @@
 /**
- * @file Directions.ts
+ * @file Directions.js
  * @brief Contains the game direction conventions
  * @author Thomas Z.
  * Date: 2025/04/17
@@ -10,14 +10,14 @@
  * Rename dy to dz and update sign convention to agree with A-star algo - Thomas
  */
 
-export enum Direction {
-  North = 1,
-  South = 2,
-  East = 4,
-  West = 8
-}
+export const Direction = {
+  North: 1,
+  South: 2,
+  East: 4,
+  West: 8
+};
 
-export function dx(direction: Direction): number {
+export function dx(direction){
   switch (direction) {
     case Direction.East:
       return 1;
@@ -28,7 +28,7 @@ export function dx(direction: Direction): number {
   }
 }
 
-export function dz(direction: Direction): number {
+export function dz(direction){
   switch (direction) {
     case Direction.North:
       return -1;
@@ -39,7 +39,7 @@ export function dz(direction: Direction): number {
   }
 }
 
-export function opposite(direction: Direction): Direction {
+export function opposite(direction){
   switch (direction) {
     case Direction.North:
       return Direction.South;

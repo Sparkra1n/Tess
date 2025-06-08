@@ -1,5 +1,5 @@
 /**
- * @file Maze.ts
+ * @file Maze.js
  * @brief Contains the maze mesh generator
  * @author Thomas Z.
  * Date: 2025/04/17
@@ -36,43 +36,39 @@
  */
 
 import * as Three from 'three';
-import { Direction, dx, dz, opposite } from "./Directions.ts";
-import { RenderableObject } from "./Types.ts";
-import { Ramp, createToonShader } from "./ToonShader.ts"
-import { GameContext } from "./GameContext.ts";
-
-export type Grid = number[][];
+import { Direction, dx, dz, opposite } from "./Directions.js";
+import { RenderableObject } from "./Types.js";
+import { Ramp, createToonShader } from "./ToonShader.js"
 
 export class Point2 {
-  constructor(public x: number, public z: number) { }
+  constructor(x, z) {
+    this.x = x;
+    this.z = z;
+  }
 }
 
 export class WallSegment {
-  constructor(public p1: Point2, public p2: Point2) { }
+  constructor(p1, p2) {
+    this.p1 = p1;
+    this.p2 = p2;
+  }
 
-  static fromCoords(x1: number, z1: number, x2: number, z2: number): WallSegment {
+  static fromCoords(x1, z1, x2, z2) {
     return new WallSegment(new Point2(x1, z1), new Point2(x2, z2));
   }
 }
 
-export class Maze extends RenderableObject<Three.Group> {
-  private width: number;
-  private height: number;
-  private cellSize: number;
-  private wallHeight: number;
-  private wallSegments: WallSegment[] = [];
-  private wallBoxes: Three.Box3[] = []; // Array to store wall colliders
-  private wallLists: Three.Box3[][][] = []; // Wall spatial lookup
-  private grid: Grid;
-  private pelletGroup: Three.Group;
-  private pelletLists: Three.Mesh[][][];
+export class Maze extends RenderableObject{
 
-  constructor(width: number, height: number, cellSize: number, wallHeight: number) {
+  constructor(width, height, cellSize, wallHeight) {
     super(new Three.Group);
     this.width = width;
     this.height = height;
     this.cellSize = cellSize;
     this.wallHeight = wallHeight;
+    this.wallSegments = [];
+    this.wallBoxes = [];
+    this.wallLists = [];
     this.grid = Array.from(Array(height), _ => Array(width).fill(0));
     this.pelletGroup = new Three.Group();
     this.mesh.add(this.pelletGroup);
@@ -80,23 +76,23 @@ export class Maze extends RenderableObject<Three.Group> {
     this.generateMazeMesh();
   }
 
-  getCellSize(): number {
+  getCellSize() {
     return this.cellSize;
   }
 
-  getWidth(): number {
+  getWidth() {
     return this.width;
   }
 
-  getDepth(): number {
+  getDepth() {
     return this.height;
   }
 
-  getPelletGroup(): Three.Group {
+  getPelletGroup() {
     return this.pelletGroup;
   }
 
-  private carvePassagesFrom(x: number, z: number): void {
+  carvePassagesFrom(x, z) {
     const directions = [Direction.North, Direction.South, Direction.East, Direction.West]
       .sort(() => Math.random() - 0.5);
 
@@ -112,11 +108,11 @@ export class Maze extends RenderableObject<Three.Group> {
     }
   }
 
-  generateMaze(): void {
+  generateMaze() {
     this.carvePassagesFrom(0, 0);
   }
 
-  createWallSegments(): void {
+  createWallSegments() {
     const w = this.grid[0].length;
     const h = this.grid.length;
     this.wallSegments = [];
@@ -127,7 +123,7 @@ export class Maze extends RenderableObject<Three.Group> {
     this.wallSegments.push(WallSegment.fromCoords(0, h, w, h));
 
     for (let i = 1; i < w; i++) {
-      let start: number | null = null;
+      let start = null;
       for (let j = 0; j <= h; j++) {
         const leftHasEast = j < h && (this.grid[j][i - 1] & Direction.East) !== 0;
         const rightHasWest = j < h && (this.grid[j][i] & Direction.West) !== 0;
@@ -146,7 +142,7 @@ export class Maze extends RenderableObject<Three.Group> {
     }
 
     for (let j = 1; j < h; j++) {
-      let start: number | null = null;
+      let start = null;
       for (let i = 0; i <= w; i++) {
         const aboveHasSouth = i < w && (this.grid[j - 1][i] & Direction.South) !== 0;
         const belowHasNorth = i < w && (this.grid[j][i] & Direction.North) !== 0;
@@ -165,7 +161,7 @@ export class Maze extends RenderableObject<Three.Group> {
     }
   }
 
-  generateMazeMesh(): void {
+  generateMazeMesh() {
     this.generateMaze();
     this.createWallSegments();
 
@@ -179,15 +175,15 @@ export class Maze extends RenderableObject<Three.Group> {
     const material = createToonShader(ramp);
 
     const wallThickness = this.cellSize * 0.1;
-    const group = this.getMesh() as Three.Group;
+    const group = this.getMesh();
     const uvScale = 1.0 / this.cellSize;
 
     for (const segment of this.wallSegments) {
       const p1 = segment.p1;
       const p2 = segment.p2;
 
-      let geometry: Three.BoxGeometry;
-      let position: Three.Vector3;
+      let geometry;
+      let position;
 
       // Vertical wall
       if (p1.x === p2.x) {
@@ -251,9 +247,9 @@ export class Maze extends RenderableObject<Three.Group> {
     this.populateWallLists();
   }
 
-  adjustBoxUVs(geometry: Three.BoxGeometry, width: number, height: number, depth: number, uvScale: number): void {
+  adjustBoxUVs(geometry, width, height, depth, uvScale) {
     const uvAttribute = geometry.attributes.uv;
-    const uvsPerFace: Three.Vector2[][] = [];
+    const uvsPerFace = [];
 
     for (let i = 0; i < 6; ++i) {
       uvsPerFace.push([
@@ -275,7 +271,7 @@ export class Maze extends RenderableObject<Three.Group> {
   }
 
   // Populate the spatial lookup structure
-  private populateWallLists(): void {
+  populateWallLists(){
     this.wallLists = Array.from(Array(this.height), _ => Array.from(Array(this.width), _ => []));
 
     for (let idx = 0; idx < this.wallSegments.length; idx++) {
@@ -323,7 +319,7 @@ export class Maze extends RenderableObject<Three.Group> {
   }
 
   // Get nearby wall colliders for a player's position
-  public getNearbyWallColliders(playerPos: Three.Vector3, playerSize: number = this.cellSize): Three.Box3[] {
+  getNearbyWallColliders(playerPos, playerSize = this.cellSize) {
     // Create box collider
     const halfSize = playerSize / 2;
     const minX = playerPos.x - halfSize;
@@ -336,7 +332,7 @@ export class Maze extends RenderableObject<Three.Group> {
     const minGridZ = Math.max(0, Math.floor(minZ / this.cellSize));
     const maxGridZ = Math.min(this.height - 1, Math.floor(maxZ / this.cellSize));
 
-    const wallSet = new Array<Three.Box3>();
+    const wallSet = new Array();
 
     for (let gridZ = minGridZ; gridZ <= maxGridZ; gridZ++) {
       for (let gridX = minGridX; gridX <= maxGridX; gridX++) {
@@ -350,7 +346,7 @@ export class Maze extends RenderableObject<Three.Group> {
     return wallSet;
   }
 
-  public spawnPellets(): void {
+  spawnPellets() {
     while (this.pelletGroup.children.length > 0)
       this.pelletGroup.remove(this.pelletGroup.children[0]);
 
@@ -398,7 +394,7 @@ export class Maze extends RenderableObject<Three.Group> {
     }
   }
 
-  public getNearbyPellets(playerPos: Three.Vector3, playerSize: number = this.cellSize): { sphere: Three.Sphere; mesh: Three.Mesh }[] {
+  getNearbyPellets(playerPos, playerSize = this.cellSize) {
     const halfSize = playerSize / 2;
     const minX = playerPos.x - halfSize;
     const maxX = playerPos.x + halfSize;
@@ -410,7 +406,7 @@ export class Maze extends RenderableObject<Three.Group> {
     const minGridZ = Math.max(0, Math.floor(minZ / this.cellSize));
     const maxGridZ = Math.min(this.height - 1, Math.floor(maxZ / this.cellSize));
 
-    const pelletColliders: { sphere: Three.Sphere; mesh: Three.Mesh }[] = [];
+    const pelletColliders = [];
     for (let gridZ = minGridZ; gridZ <= maxGridZ; gridZ++) {
       for (let gridX = minGridX; gridX <= maxGridX; gridX++) {
         const pellets = this.pelletLists[gridZ][gridX];
@@ -425,7 +421,7 @@ export class Maze extends RenderableObject<Three.Group> {
     return pelletColliders;
   }
 
-  public removePellet(mesh: Three.Mesh): void {
+  removePellet(mesh) {
     this.pelletGroup.remove(mesh);
     const gridX = Math.floor(mesh.position.x / this.cellSize);
     const gridZ = Math.floor(mesh.position.z / this.cellSize);
@@ -434,8 +430,8 @@ export class Maze extends RenderableObject<Three.Group> {
     if (index !== -1) cellPellets.splice(index, 1);
   }
 
-  public getAvailableDirections(x: number, z: number): Direction[] {
-    const directions: Direction[] = [];
+  getAvailableDirections(x, z) {
+    const directions = [];
     if (this.grid[z][x] & Direction.North) directions.push(Direction.North);
     if (this.grid[z][x] & Direction.South) directions.push(Direction.South);
     if (this.grid[z][x] & Direction.East) directions.push(Direction.East);
@@ -443,8 +439,8 @@ export class Maze extends RenderableObject<Three.Group> {
     return directions;
   }
 
-  public getNeighbors(x: number, z: number): Point2[] {
-    const neighbors: Point2[] = [];
+  getNeighbors(x, z) {
+    const neighbors = [];
     const directions = [Direction.North, Direction.South, Direction.East, Direction.West];
     for (const dir of directions) {
       if (this.grid[z][x] & dir) {
@@ -454,7 +450,7 @@ export class Maze extends RenderableObject<Three.Group> {
     return neighbors;
   }
 
-  update(context: GameContext): void {
+  update(context) {
     // Update pellet animations
     this.pelletGroup.children.forEach(pellet => {
       if (pellet instanceof Three.Mesh) {

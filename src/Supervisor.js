@@ -1,39 +1,38 @@
 /**
- * @file Supervisor.ts
+ * @file Supervisor.js
  * @brief Contains the Game manager class
  * @author Thomas Z.
  * Date: 2025/05/08
  */
 
 import * as Three from "three";
-import { Player } from './Player';
-import { Stage } from './Stage';
-import { Maze } from './Maze';
-import { ICollision, ICollisionHandler, GameState} from "./Types";
-import { MazeRunner } from "./MazeRunner";
-import { Timer } from "./Timer";
+import { Player } from './Player.js';
+import { Stage } from './Stage.js';
+import { Maze } from './Maze.js';
+import { GameState} from "./Types.js";
+import { MazeRunner } from "./MazeRunner.js";
+import { Timer } from "./Timer.js";
 
-export class Supervisor implements ICollisionHandler {
-  private player = new Player(1, this);
-  private stage = new Stage();
-  private input = new Set<string>();
-  private mouse = { x: 0, y: 0, dx: 0, dy: 0 };
-  private mazeWidth: number = 20;
-  private mazeHeight: number = 20;
-  private cellSize: number = 5;
-  private maze: Maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 3);
-  private score: number = 0;
-  private timer: Timer;
-  private canEatGhosts: boolean;
-  private ghosts: MazeRunner[] = [];
-  private state: GameState = GameState.Start;
-  private scoreToWin: number = 1000; // Default to easy
-  private pickupSound = new Audio('public/pick_up.wav');
-  private victorySound = new Audio('public/victory.wav');
-  private loseSound = new Audio('public/lose.wav');
-  private upgradeSound = new Audio('public/upgrade.wav');
+export class Supervisor {
 
   constructor() {
+    this.player = new Player(1, this);
+    this.stage = new Stage();
+    this.input = new Set();
+    this.mouse = { x: 0, y: 0, dx: 0, dy: 0 };
+    this.mazeWidth = 20;
+    this.mazeHeight = 20;
+    this.cellSize = 5;
+    this.maze = new Maze(this.mazeWidth, this.mazeHeight, this.cellSize, 3);
+    this.score = 0;
+    this.ghosts = [];
+    this.state = GameState.Start;
+    this.scoreToWin = 1000; // Default to easy
+    this.pickupSound = new Audio('public/pick_up.wav');
+    this.victorySound = new Audio('public/victory.wav');
+    this.loseSound = new Audio('public/lose.wav');
+    this.upgradeSound = new Audio('public/upgrade.wav');
+
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
@@ -89,10 +88,14 @@ export class Supervisor implements ICollisionHandler {
     }, true);
 
     const startButton = document.getElementById('startButton');
+    console.log('Start button element:', startButton);
     if (startButton) {
       startButton.addEventListener('click', () => {
+        console.log('Start button clicked');
         const startScreen = document.getElementById('startScreen');
         const difficultyScreen = document.getElementById('difficultyScreen');
+        console.log('Start screen:', startScreen);
+        console.log('Difficulty screen:', difficultyScreen);
         if (startScreen && difficultyScreen) {
           startScreen.style.display = 'none';
           difficultyScreen.style.display = 'flex';
@@ -101,8 +104,10 @@ export class Supervisor implements ICollisionHandler {
     }
 
     const easyButton = document.getElementById('easyButton');
+    console.log('Easy button element:', easyButton);
     if (easyButton) {
       easyButton.addEventListener('click', () => {
+        console.log('Easy button clicked');
         this.scoreToWin = 1000;
         this.startGame();
       });
@@ -134,7 +139,7 @@ export class Supervisor implements ICollisionHandler {
     this.run();
   }
 
-  private startGame() {
+  startGame() {
     const difficultyScreen = document.getElementById('difficultyScreen');
     const gameScreen = document.getElementById('gameScreen');
     if (difficultyScreen && gameScreen) {
@@ -149,9 +154,9 @@ export class Supervisor implements ICollisionHandler {
    * @param position 
    * @returns ICollision[] (empty if no collisions)
    */
-  willCollide(position: Three.Vector3): ICollision[] {
+  willCollide(position) {
     const playerBox = this.player.getBoundingBoxAt(position);
-    const collisions: ICollision[] = [];
+    const collisions = [];
 
     // Ground collision
     if (playerBox.min.y < 0) {
@@ -159,7 +164,7 @@ export class Supervisor implements ICollisionHandler {
     }
 
     // Wall collisions
-    const wallsNearby: Three.Box3[] = this.maze.getNearbyWallColliders(
+    const wallsNearby = this.maze.getNearbyWallColliders(
       this.player.getPosition(),
       this.player.getSize()
     );
@@ -175,8 +180,8 @@ export class Supervisor implements ICollisionHandler {
         const overlapX = Math.min(playerBox.max.x, wall.max.x) - Math.max(playerBox.min.x, wall.min.x);
         const overlapZ = Math.min(playerBox.max.z, wall.max.z) - Math.max(playerBox.min.z, wall.min.z);
 
-        let normal: Three.Vector3;
-        let depth: number;
+        let normal;
+        let depth;
         if (overlapX < overlapZ) {
           // Collision primarily along x-axis
           const direction = playerCenter.x < wallCenter.x ? -1 : 1;
@@ -195,7 +200,7 @@ export class Supervisor implements ICollisionHandler {
     return collisions;
   }
 
-  public checkGhostIntersections(position: Three.Vector3): void {
+  checkGhostIntersections(position){
     const playerBox = this.player.getBoundingBoxAt(position);
     
     for (let i = this.ghosts.length - 1; i >= 0; i--) {
@@ -217,7 +222,7 @@ export class Supervisor implements ICollisionHandler {
     }
   }
 
-  checkPelletIntersection(position: Three.Vector3): void {
+  checkPelletIntersection(position){
     const playerBox = this.player.getBoundingBoxAt(position);
     const pellets = this.maze.getNearbyPellets(this.player.getPosition());
 
@@ -232,7 +237,7 @@ export class Supervisor implements ICollisionHandler {
     }
   }
 
-  private endGame(finalState: GameState.Won | GameState.Lost): void {
+  endGame(finalState) {
     this.state = finalState;
     document.exitPointerLock();
     const gameScreen = document.getElementById('gameScreen');
@@ -256,7 +261,7 @@ export class Supervisor implements ICollisionHandler {
   run() {
     let lastTime = performance.now();
 
-    const loop = (time: number) => {
+    const loop = (time) => {
       const deltaTime = (time - lastTime) / 1000;
       lastTime = time;
       if (this.state === GameState.Playing) {

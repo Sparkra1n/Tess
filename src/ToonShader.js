@@ -1,5 +1,5 @@
 /**
- * @file ToonShader.ts
+ * @file ToonShader.js
  * @brief Contains the Ramp shader class and Toon material generator
  * @author Thomas Z.
  * Date: 2025/05/16
@@ -12,19 +12,16 @@
 import * as Three from 'three';
 
 export class Ramp {
-  private texture: Three.DataTexture;
-  private grungeTextures: (Three.Texture | null)[];
-  private grungeColors: (Three.Color | null)[];
 
   constructor(
-    shadowColor: Three.Color = new Three.Color(0x333333),
-    baseColor: Three.Color = new Three.Color(0x6666cc),
-    intermediateColor: Three.Color = new Three.Color(0x9999ff),
-    highlightColor: Three.Color = new Three.Color(0xffffff),
-    percentages: number[] = [25, 25, 25, 25],
-    grungeTextures: (Three.Texture | null)[] = [null, null, null, null],
-    grungeColors: (Three.Color | null)[] = [null, null, null, null],
-    width: number = 512
+    shadowColor = new Three.Color(0x333333),
+    baseColor = new Three.Color(0x6666cc),
+    intermediateColor = new Three.Color(0x9999ff),
+    highlightColor = new Three.Color(0xffffff),
+    percentages = [25, 25, 25, 25],
+    grungeTextures = [null, null, null, null],
+    grungeColors = [null, null, null, null],
+    width = 512
   ) {
     const colors = [shadowColor, baseColor, intermediateColor, highlightColor];
 
@@ -80,19 +77,19 @@ export class Ramp {
     this.grungeColors = grungeColors;
   }
 
-  public getTexture(): Three.DataTexture {
+  getTexture(){
     return this.texture;
   }
 
-  public getGrungeTextures(): (Three.Texture | null)[] {
+  getGrungeTextures(){
     return this.grungeTextures;
   }
 
-  public getGrungeColors(): (Three.Color | null)[] {
+  getGrungeColors(){
     return this.grungeColors;
   }
 
-  public dispose(): void {
+  dispose(){
     this.texture.dispose();
     this.grungeTextures.forEach(texture => {
       if (texture) texture.dispose();
@@ -205,7 +202,7 @@ export const fragmentShader = `
   }
 `;
 
-export function createToonShader(ramp: Ramp): Three.ShaderMaterial {
+export function createToonShader(ramp) {
   const grungeTextures = ramp.getGrungeTextures();
   const grungeEnabled = grungeTextures.map(texture => texture !== null);
   const grungeColors = ramp.getGrungeColors().map(color => color || new Three.Color(0x0A1005)); // Fallback color

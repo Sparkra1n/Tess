@@ -1,5 +1,5 @@
 /**
- * @file Player.ts
+ * @file Player.js
  * @brief Contains the implementation of the maze player.
  * @author Thomas Z.
  * Date: 2025/05/08
@@ -16,35 +16,31 @@
  */
 
 import * as Three from 'three';
-import { RenderableObject } from './Types';
-import { GameContext } from "./GameContext.ts"
-import { Supervisor } from './Supervisor.ts';
+import { RenderableObject } from './Types.js';
+import { Supervisor } from './Supervisor.js';
 
 export class Player extends RenderableObject {
-  private position = new Three.Vector3(0, 0, 0);
-  private velocity = new Three.Vector3(0, 0, 0);
-  private direction = new Three.Vector3(0, 0, 1);
-  private rotation = new Three.Vector3(0, 0, 0);
-  private baseSpeed = 0.2; // Base speed for the smallest size
-  private minSpeed = 0.1;  // Minimum speed when at maximum size
-  private maxSize = 3.0;   // Maximum size before speed stops decreasing
-  private speed = 0.2;     // Current speed (will be updated by updateSpeed)
-  private jumpSpeed = 0.15;
-  private gravity = -0.01;
-  private size: number;
-  private supervisor: Supervisor;
-  private pacmanMesh: Three.Mesh;
-  private mouthAnimating = false;
-  private mouthAnimationTime = 0;
-  private mouthAnimationDuration = 0.3; // seconds
-  private mouthClosed = false;
-  private mouthOpenAngle = Math.PI / 4;
-  private mouthClosedAngle = Math.PI / 32;
 
-  constructor(size: number = 3, supervisor: Supervisor) {
+  constructor(size = 3, supervisor) {
     super(new Three.Mesh);
+    this.position = new Three.Vector3(0, 0, 0);
+    this.velocity = new Three.Vector3(0, 0, 0);
+    this.direction = new Three.Vector3(0, 0, 1);
+    this.rotation = new Three.Vector3(0, 0, 0);
+    this.baseSpeed = 0.2; // Base speed for the smallest size
+    this.minSpeed = 0.1;  // Minimum speed when at maximum size
+    this.maxSize = 3.0;   // Maximum size before speed stops decreasing
+    this.speed = 0.2;     // Current speed (will be updated by updateSpeed)
+    this.jumpSpeed = 0.15;
+    this.gravity = -0.01;
     this.size = size;
     this.supervisor = supervisor;
+    this.mouthAnimating = false;
+    this.mouthAnimationTime = 0;
+    this.mouthAnimationDuration = 0.3; // seconds
+    this.mouthClosed = false;
+    this.mouthOpenAngle = Math.PI / 4;
+    this.mouthClosedAngle = Math.PI / 32;
     this.updateSpeed(); // Initialize speed based on starting size
 
     // Pac-Man: a yellow sphere with a wedge cut out for the mouth
@@ -72,14 +68,14 @@ export class Player extends RenderableObject {
     this.mesh.position.copy(this.position);
   }
 
-  private updateSpeed() {
+  updateSpeed() {
     // Calculate speed based on size
     // Speed decreases linearly from baseSpeed to minSpeed as size increases
     const sizeRatio = Math.min(this.size / this.maxSize, 1);
     this.speed = this.baseSpeed - (this.baseSpeed - this.minSpeed) * sizeRatio;
   }
 
-  public triggerMouthAnimation() {
+  triggerMouthAnimation() {
     this.mouthAnimating = true;
     this.mouthAnimationTime = 0;
     this.mouthClosed = false;
@@ -89,7 +85,7 @@ export class Player extends RenderableObject {
     return this.direction;
   }
 
-  setPosition(x: number, y: number, z: number) : void {
+  setPosition(x, y, z) {
     this.mesh.position.set(x, y, z);
     this.position = new Three.Vector3(x, y, z);
   }
@@ -110,14 +106,14 @@ export class Player extends RenderableObject {
     return this.speed;
   }
 
-  getBoundingBoxAt(position: Three.Vector3) {
+  getBoundingBoxAt(position) {
     const p = position.clone();
     const min = p.clone().add(new Three.Vector3(-this.size/2, -this.size/2, -this.size/2));
     const max = p.clone().add(new Three.Vector3(this.size/2, this.size/2, this.size/2));
     return new Three.Box3(min, max);
   }
 
-  update(context: GameContext): void {
+  update(context) {
     this.supervisor.checkGhostIntersections(this.position);
     let D = new Three.Vector3(0, 0, 0);
     if (context.input.has('w')) {
@@ -224,11 +220,11 @@ export class Player extends RenderableObject {
     }
   }
 
-  getMesh(): Three.Object3D {
+  getMesh(){
     return this.mesh;
   }
 
-  private setMouthAngle(angle: number) {
+  setMouthAngle(angle) {
     const radius = this.size / 2;
     // Replace geometry with new mouth angle
     const geometry = new Three.SphereGeometry(
@@ -244,7 +240,7 @@ export class Player extends RenderableObject {
     this.pacmanMesh.geometry = geometry;
   }
 
-  public increaseSize(amount: number = 0.2) {
+  increaseSize(amount = 0.2) {
     // Increase size
     this.size += amount;
     
